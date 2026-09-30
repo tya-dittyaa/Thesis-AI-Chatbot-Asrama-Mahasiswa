@@ -174,17 +174,54 @@ def load_resources():
 chunks, vectorizer, doc_vectors, pipeline_prompts, triage_tool_schema = load_resources()
 
 
-def search_handbook(query: str, top_k: int = 2):
+# Bilingual Query Expansion for RAG Handbook Retrieval (Indonesian to English terms)
+SYNONYM_EXPANSION = {
+    "tamu": "visitor guest",
+    "kunjung": "visiting hours",
+    "kunjungan": "visiting hours",
+    "kolam": "swimming pool",
+    "renang": "swimming",
+    "gym": "fitness center gym",
+    "fitness": "fitness center gym",
+    "denda": "fine penalty charge",
+    "laundry": "laundry washing quota",
+    "cuci": "laundry wash",
+    "baju": "clothes laundry",
+    "listrik": "electricity meter kwh",
+    "kwh": "electricity meter kwh",
+    "pindah": "room change move",
+    "kunci": "key card replacement lost",
+    "kartu": "access key card",
+    "hilang": "lost replacement fine",
+    "paket": "mail package",
+    "kurir": "courier package",
+    "parkir": "parking vehicle",
+    "shuttle": "shuttle bus schedule",
+    "wifi": "internet wifi connection",
+    "deposit": "security deposit refund"
+}
+
+
+def search_handbook(query: str, top_k: int = 2, threshold: float = 0.08):
+    """Semantic RAG retrieval with keyword expansion and similarity thresholding."""
     from sklearn.metrics.pairwise import cosine_similarity
     if not query.strip():
         return []
-    q_vec = vectorizer.transform([query])
+
+    # Semantic Keyword Expansion (bilingual bridge to English handbook)
+    expanded_q = query.lower()
+    for id_term, en_terms in SYNONYM_EXPANSION.items():
+        if id_term in expanded_q:
+            expanded_q += " " + en_terms
+
+    q_vec = vectorizer.transform([expanded_q])
     sim = cosine_similarity(q_vec, doc_vectors)[0]
     top_indices = sim.argsort()[-top_k:][::-1]
     results = []
     for idx in top_indices:
         score = float(sim[idx])
-        if score > 0.03:
+        # Only inject chunk if similarity meets or exceeds semantic threshold
+        if score >= threshold:
             c = chunks[idx].copy()
             c["score"] = score
             results.append(c)
@@ -436,7 +473,7 @@ def call_with_retry(model, contents, config, max_retries=3):
 # ==============================================================================
 def process_single_agent(user_msg: str, top_chunks: list) -> str:
     rag_context = ""
-    if top_chunks and top_chunks[0]["score"] > 0.04:
+    if top_chunks:
         rag_context = "\n\n".join([f"[{c['section_title']} (Halaman {c['page_start']})]\n{c['text_content']}" for c in top_chunks])
 
     taxonomy_text = "\n".join([f"- {dept} ({data['code']}): {', '.join(data['categories'])}" for dept, data in OFFICIAL_TAXONOMY.items()])
@@ -529,11 +566,11 @@ TAKSONOMI 5 DEPARTEMEN:
     reply_text = resp.text or ""
     st.session_state.last_trace = {
         "architecture": "SINGLE_AGENT_BASELINE",
-        "type": "HANDBOOK_RAG_ANSWER" if (top_chunks and top_chunks[0]["score"] > 0.04) else "GENERAL_CONVERSATION",
+        "type": "HANDBOOK_RAG_ANSWER" if top_chunks else "GENERAL_CONVERSATION",
         "latency": round(lat, 3),
         "tokens": tokens,
-        "matched_section": top_chunks[0]["section_title"] if (top_chunks and top_chunks[0]["score"] > 0.04) else None,
-        "page": top_chunks[0]["page_start"] if (top_chunks and top_chunks[0]["score"] > 0.04) else None,
+        "matched_section": top_chunks[0]["section_title"] if top_chunks else None,
+        "page": top_chunks[0]["page_start"] if top_chunks else None,
         "reasoning": "Single Agent Baseline memproses percakapan/FAQ dalam 1 context window monolitik."
     }
     return reply_text if reply_text.strip() else "Halo Kak! Ada yang bisa saya bantu terkait hunian Binus Square? 😊"
@@ -544,7 +581,7 @@ TAKSONOMI 5 DEPARTEMEN:
 # ==============================================================================
 def process_multi_agent(user_msg: str, top_chunks: list) -> str:
     rag_context = ""
-    if top_chunks and top_chunks[0]["score"] > 0.04:
+    if top_chunks:
         rag_context = "\n\n".join([f"[{c['section_title']} (Halaman {c['page_start']})]\n{c['text_content']}" for c in top_chunks])
 
     # ---------------------------------------------------------
@@ -602,9 +639,9 @@ TUGAS ANDA:
         reply_text = resp1.text or ""
         reply_text = re.sub(r'```(?:action_handoff|action_trace|json)?\s*\{.*?\}\s*```', '', reply_text, flags=re.DOTALL).strip()
         
-        # Check intent for inspector
-        is_rag = bool(top_chunks and top_chunks[0]["score"] > 0.04)
-        intent_type = "HANDBOOK_RAG_ANSWER" if is_rag else "CLARIFICATION_AND_CONFIRMATION"
+        # Check intent for inspector based on whether semantic RAG was triggered
+        is_rag = bool(top_chunks)
+        intent_type = "HANDBOOK_RAG_ANSWER" if is_rag else "CONVERSATION_AND_CLARIFICATION"
 
         st.session_state.last_trace = {
             "architecture": "MULTI_AGENT_SYSTEM",
@@ -612,7 +649,7 @@ TUGAS ANDA:
             "active_agents": ["Agen 1 (Front Desk)"],
             "agent1": {
                 "role": "Receptionist & Dialog Router",
-                "status": "Dijawab Langsung / Dialog Berlanjut",
+                "status": "Dijawab Langsung (FAQ / Percakapan)",
                 "latency": round(lat_agent1, 3),
                 "tokens": tok_agent1
             },
@@ -772,37 +809,8 @@ Silakan analisis taksonomi dan panggil fungsi tool `route_and_classify_complaint
 
 
 def process_user_input(user_msg: str, arch_mode: str) -> str:
-    cleaned = user_msg.strip().lower()
-    
-    GREETINGS = {"halo", "hai", "hi", "p", "siang", "pagi", "sore", "malam", "selamat pagi", 
-                 "selamat siang", "selamat sore", "selamat malam", "assalamualaikum", "tes", "test"}
-    THANK_YOUS = {"terima kasih", "makasih", "makasi", "tengkyu", "thanks", "ok", "oke", "siap", "sip", "baik", "oke siap"}
-
-    arch_tag = "MULTI_AGENT_SYSTEM" if "Multi-Agent" in arch_mode else "SINGLE_AGENT_BASELINE"
-
-    if cleaned in GREETINGS:
-        st.session_state.last_trace = {
-            "architecture": arch_tag,
-            "type": "EARLY_EXIT_GREETING",
-            "active_agents": ["Gatekeeper Filter"],
-            "total_latency": 0.01,
-            "total_tokens": 0,
-            "reasoning": "⚡ Early-Exit Gatekeeper: Sapaan terdeteksi. Membalas instan tanpa panggil LLM/RAG (Hemat 1.000+ token)."
-        }
-        return "Halo Kak! 👋 Ada yang bisa saya bantu terkait fasilitas kamar atau peraturan di Binus Square hari ini?"
-
-    if cleaned in THANK_YOUS and len(st.session_state.messages) > 1:
-        st.session_state.last_trace = {
-            "architecture": arch_tag,
-            "type": "EARLY_EXIT_ACK",
-            "active_agents": ["Gatekeeper Filter"],
-            "total_latency": 0.01,
-            "total_tokens": 0,
-            "reasoning": "⚡ Early-Exit Gatekeeper: Konfirmasi/terima kasih terdeteksi. Membalas instan tanpa panggil LLM (Hemat 1.000+ token)."
-        }
-        return "Sama-sama Kak! Senang bisa membantu. Jika ada kendala fasilitas hunian lainnya, jangan ragu untuk hubungi kami lagi ya. Semoga harinya menyenangkan! 😊🙏"
-
-    top_chunks = search_handbook(user_msg, top_k=2)
+    # 1. Semantic RAG Search with Relevance Threshold (Only injects handbook if query is relevant)
+    top_chunks = search_handbook(user_msg, top_k=2, threshold=0.08)
 
     active_client = key_manager.get_client() if key_manager else client
     if not active_client:
