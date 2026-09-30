@@ -1,0 +1,42 @@
+{
+  "timestamp": "2026-09-30T13:34:45.077902",
+  "architecture": "Multi-Agent System (3-Agent Pipeline with Native Function Calling & RAG)",
+  "model_used": "gemini-3.5-flash-lite",
+  "total_evaluated": 500,
+  "overall_accuracy_percent": 66.6,
+  "function_call_success_rate": 81.8,
+  "average_latency_seconds": 5.16,
+  "average_tokens_per_ticket": 3003.6,
+  "reroute_analysis": {
+    "total_rerouted_tickets": 1,
+    "reroute_accuracy_percent": 0.0,
+    "reroute_successfully_corrected": 0
+  },
+  "per_department_metrics": {
+    "Estate Department": {
+      "total_tickets": 100,
+      "correct_predictions": 91,
+      "accuracy_percent": 91.0
+    },
+    "Operations": {
+      "total_tickets": 100,
+      "correct_predictions": 85,
+      "accuracy_percent": 85.0
+    },
+    "Finance": {
+      "total_tickets": 100,
+      "correct_predictions": 73,
+      "accuracy_percent": 73.0
+    },
+    "Marketing": {
+      "total_tickets": 100,
+      "correct_predictions": 77,
+      "accuracy_percent": 77.0
+    },
+    "Student Support Office": {
+      "total_tickets": 100,
+      "correct_predictions": 7,
+      "accuracy_percent": 7.0
+    }
+  }
+}

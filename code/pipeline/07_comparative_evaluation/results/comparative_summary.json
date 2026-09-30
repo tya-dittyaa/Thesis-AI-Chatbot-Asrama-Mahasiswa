@@ -1,0 +1,60 @@
+{
+  "timestamp": "2026-09-30T14:15:58.068693",
+  "baseline": {
+    "architecture": "Single-Agent Baseline",
+    "total_tickets": 500,
+    "overall_accuracy": 82.8,
+    "macro_precision": 85.99,
+    "macro_recall": 82.8,
+    "macro_f1": 84.0,
+    "weighted_f1": 84.0,
+    "schema_validity_rate": 100.0,
+    "reroute_tickets_count": 1,
+    "reroute_accuracy": 0.0,
+    "reroute_recovered_count": 0,
+    "average_latency_sec": 1.758,
+    "average_tokens_ticket": 832.8,
+    "per_department_accuracy": {
+      "Estate Department": 92.0,
+      "Operations": 87.0,
+      "Finance": 68.0,
+      "Marketing": 81.0,
+      "Student Support Office": 86.0
+    },
+    "avg_confidence_score": null,
+    "confidence_on_correct": null,
+    "confidence_on_wrong": null
+  },
+  "multi_agent_system": {
+    "architecture": "Multi-Agent System (MAS)",
+    "total_tickets": 500,
+    "overall_accuracy": 66.6,
+    "macro_precision": 77.31,
+    "macro_recall": 66.6,
+    "macro_f1": 67.85,
+    "weighted_f1": 67.85,
+    "schema_validity_rate": 81.8,
+    "reroute_tickets_count": 1,
+    "reroute_accuracy": 0.0,
+    "reroute_recovered_count": 0,
+    "average_latency_sec": 6.308,
+    "average_tokens_ticket": 3671.9,
+    "per_department_accuracy": {
+      "Estate Department": 91.0,
+      "Operations": 85.0,
+      "Finance": 73.0,
+      "Marketing": 77.0,
+      "Student Support Office": 7.0
+    },
+    "avg_confidence_score": 0.759,
+    "confidence_on_correct": 0.939,
+    "confidence_on_wrong": 0.402
+  },
+  "delta_mas_vs_baseline": {
+    "overall_accuracy_gain": -16.2,
+    "macro_f1_gain": -16.15,
+    "schema_validity_gain": -18.2,
+    "latency_delta_sec": 4.55,
+    "token_overhead": 2839.1
+  }
+}

@@ -1,0 +1,54 @@
+# Environment & Secrets (CRITICAL: Do not leak API keys)
+.env
+.env.local
+*.env
+!.env.example
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Python Cache & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+
+# Execution Logs
+*.log
+pipeline_evaluation.log
+evaluation_vps.log
+
+# Temporary & Local Backup Checkpoints
+*.bak
+*_backup_*
+*.tmp
+
+# Large Datasets & Historical Population Dumps (>10MB)
+data/raw/
+data/processed/boarder_feedback_dataset.csv
+pipeline/01_data_filtering/data/feedback_2015_2025.csv
+pipeline/02_data_splitting/data/feedback_2015_2025_clean.csv
+pipeline/02_data_splitting/data/train_pool.csv
+pipeline/02_data_splitting/data/anomaly_samples.csv
+
+# EXPLICITLY KEEP: Official Golden Benchmark & RAG Chunks
+!pipeline/02_data_splitting/data/test_golden_benchmark_500.csv
+!pipeline/05_single_agent_baseline/data/test_golden_benchmark_500.csv
+!pipeline/06_multi_agent_system/data/test_golden_benchmark_500.csv
+!pipeline/03_handbook_rag_prep/data/handbook_chunks.json
+!pipeline/06_multi_agent_system/data/handbook_chunks.json
+
+# Large Zip Bundles (Deploy archives)
+*.zip
+thesis_code_bundle.zip
+
+# IDE & OS Artifacts
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,59 @@
+{
+  "name": "route_and_classify_complaint",
+  "description": "Fungsi otomatisasi triase keluhan fasilitas hunian mahasiswa Binus Square. Memetakan laporan keluhan ke departemen penangan yang tepat, mengekstrak entitas fasilitas yang bermasalah, lokasi, serta menentukan tingkat urgensi.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "target_department": {
+        "type": "string",
+        "enum": ["ED", "OP", "FN", "MR", "SO"],
+        "description": "Kode departemen penangan yang bertanggung jawab: ED (Estate Department: fisik, AC, listrik, kebersihan), OP (Operations: front office, internet/wifi, paket, pindah kamar, tenant), FN (Finance: sewa, tagihan listrik, deposit), MR (Marketing: renewal, checkout, promo, tamu), SO (Student Support: tata tertib, konflik roommate, konseling)."
+      },
+      "target_department_name": {
+        "type": "string",
+        "enum": [
+          "Estate Department",
+          "Operations",
+          "Finance",
+          "Marketing",
+          "Student Support Office"
+        ],
+        "description": "Nama lengkap departemen penangan resmi."
+      },
+      "problem_category": {
+        "type": "string",
+        "description": "Kategori subjek masalah spesifik sesuai taksonomi resmi fasilitas hunian (contoh: 'AC Service', 'Room Maintenance', 'Internet', 'Electricity Usage', 'Room Payment and Due Date', dll)."
+      },
+      "urgency_level": {
+        "type": "string",
+        "enum": ["Low", "Medium", "High", "Emergency"],
+        "description": "Tingkat keparahan dan urgensi penanganan: 'Emergency' (bahaya kebakaran/kebocoran parah/korsleting listrik), 'High' (AC mati total, pintu/kunci rusak terkunci, kasur per rusak tajam), 'Medium' (kerusakan perabot non-darurat, wifi lambat, lampu mati sebagian), 'Low' (pertanyaan administratif, saran/masukan fasilitas)."
+      },
+      "facility_item": {
+        "type": "string",
+        "description": "Nama objek/fasilitas fisik atau komponen layanan yang dikeluhkan (contoh: 'AC', 'Kasur', 'Kran Air', 'Kunci Kamar', 'WiFi Router', 'Lampu', 'Tagihan Listrik')."
+      },
+      "location_context": {
+        "type": "string",
+        "description": "Lokasi spesifik terjadinya masalah yang diekstrak dari pesan (contoh: 'Kamar Tidur', 'Kamar Mandi', 'Koridor Lt. 9', 'Lounge', 'Area Parkir', atau 'Tidak Disebutkan')."
+      },
+      "confidence_score": {
+        "type": "number",
+        "description": "Skor keyakinan model terhadap keputusan routing departemen, dalam rentang 0.0 hingga 1.0. Nilai 1.0 berarti sangat yakin (sinyal keluhan sangat jelas), nilai di bawah 0.6 menunjukkan ambiguitas departemen (misalnya keluhan yang bisa masuk ke dua departemen sekaligus). Gunakan untuk mengidentifikasi kasus borderline."
+      },
+      "reasoning_summary": {
+        "type": "string",
+        "description": "Penjelasan ringkas alasan logis pemilihan departemen penangan berdasarkan isi keluhan."
+      }
+    },
+    "required": [
+      "target_department",
+      "target_department_name",
+      "problem_category",
+      "urgency_level",
+      "facility_item",
+      "confidence_score"
+    ]
+  }
+}
+

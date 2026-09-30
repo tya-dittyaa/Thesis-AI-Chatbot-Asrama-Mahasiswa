@@ -1,0 +1,81 @@
+{
+  "metadata": {
+    "source_database": "BSQDB (MsDepartment & MsFeedbackSubject)",
+    "description": "Taksonomi master departemen dan kategori subjek keluhan fasilitas hunian"
+  },
+  "departments": [
+    {
+      "code": "ED",
+      "name": "Estate Department",
+      "department_id": "604931BF-1364-4C08-8E27-10833E67DDA9",
+      "description": "Pemeliharaan fisik gedung, AC, kamar mandi, listrik fisik, perabot, dan fasilitas umum.",
+      "subjects": [
+        {"subject_id": "B507D987-FBC2-41F4-8CA8-E11B2C6B6D56", "name": "AC Service"},
+        {"subject_id": "56D597A1-F682-430D-A92C-33D8CD4781A8", "name": "Room Maintenance"},
+        {"subject_id": "D20CC6CA-D330-44E8-8856-CB2BF0049772", "name": "Cleaning Service"},
+        {"subject_id": "FA646B9F-7A4C-486B-8902-850EF6F32BEB", "name": "Electricity Usage"},
+        {"subject_id": "2CD0E08A-4002-4548-AB95-D3D85AAD88D0", "name": "Building Facilities"},
+        {"subject_id": "BCEE4528-59B1-4109-9BA2-9B77A49CFFFD", "name": "Gym"},
+        {"subject_id": "849C0D24-9487-4905-BE10-2C789E9D4360", "name": "Swimming Pool"},
+        {"subject_id": "0709B72C-FBFC-4E0F-AC32-4A09E09E919C", "name": "Parking"},
+        {"subject_id": "EA8999C6-935F-42C8-A1F8-B165DA5B6C7F", "name": "Security"},
+        {"subject_id": "AA768C78-5B23-400F-A0F3-0EDF9F3EC138", "name": "Shuttle Bus"},
+        {"subject_id": "82FF11CF-23E1-4281-856F-373DEFEBB00D", "name": "Telephone Signal"},
+        {"subject_id": "4E4D70AB-1F71-42DC-BA09-6EB385DEF3FC", "name": "Others"}
+      ]
+    },
+    {
+      "code": "OP",
+      "name": "Operations",
+      "department_id": "FBFBDEC3-3285-4772-A4ED-854BBED61BB2",
+      "description": "Pelayanan front office, internet/wifi, paket/surat, pindah kamar, izin tamu, tenant komersial.",
+      "subjects": [
+        {"subject_id": "7322C8F3-5031-4620-9CC7-F5817ECB9B47", "name": "Internet"},
+        {"subject_id": "34F36F37-226D-4EA5-AA15-740B14D95AD4", "name": "Mail and Package"},
+        {"subject_id": "4A24F3F6-19FC-4F3F-9526-5C8B756A0063", "name": "Room Change"},
+        {"subject_id": "4039618E-DA87-409A-A0DC-D15082A94A54", "name": "Visitor"},
+        {"subject_id": "6679BEEE-998A-4964-B230-3F943AE2B5BD", "name": "Tenants (Laundry, Cafeteria, Coffee Shop, Mini Market, Copy Center)"},
+        {"subject_id": "71626AE3-D5A0-4FD0-99DB-50676D90B73C", "name": "Games"},
+        {"subject_id": "842362A0-0F52-4225-BC23-6410E9572BD4", "name": "Others"}
+      ]
+    },
+    {
+      "code": "FN",
+      "name": "Finance",
+      "department_id": "6544BBCC-A3A8-4459-A2D7-EF416144687E",
+      "description": "Pembayaran sewa kamar, tagihan kelebihan listrik bulanan, dan pengembalian security deposit.",
+      "subjects": [
+        {"subject_id": "354643C7-D410-45AD-9B81-AD5D1C3E2471", "name": "Room Payment and Due Date"},
+        {"subject_id": "5956CD05-5883-4A80-945C-E3AB20455A1E", "name": "Electricity Bill"},
+        {"subject_id": "523A9879-D564-43F7-9968-AE9B5B03BB04", "name": "Security Deposit"},
+        {"subject_id": "7967F0A3-4D62-43D2-B8D9-5BD041AF0D29", "name": "Others"}
+      ]
+    },
+    {
+      "code": "MR",
+      "name": "Marketing",
+      "department_id": "44FA4F91-01C2-4E82-AC97-5B1E49C7C5B6",
+      "description": "Perpanjangan sewa (renewal), checkout keluar kamar, promo/voucher, reservasi kamar tamu.",
+      "subjects": [
+        {"subject_id": "84124811-7E03-4AFB-AB0A-2196B61EAF3D", "name": "Renewal"},
+        {"subject_id": "CEE9FB93-558F-423D-BD71-0819607D1AD0", "name": "Check Out"},
+        {"subject_id": "094F7D4B-6D6A-4DCE-B326-9FBF92CD4881", "name": "Promotion Program"},
+        {"subject_id": "373A5FC0-3F4F-4357-AFC1-CBA4CC8F9400", "name": "Guest Room Reservation"},
+        {"subject_id": "517117CF-1D10-46AF-BF69-A9008FDEF71B", "name": "Others"}
+      ]
+    },
+    {
+      "code": "SO",
+      "name": "Student Support Office",
+      "department_id": "C5C98A22-4B2A-4E98-9618-478066B6EAB2",
+      "description": "Perilaku penghuni/konflik teman sekamar, tata tertib hunian, kegiatan event, konseling akademik.",
+      "subjects": [
+        {"subject_id": "31D606C0-30B2-43D3-855E-8DBAB5291E24", "name": "Boarder's Behavior"},
+        {"subject_id": "CE9AA548-E98A-41D6-A4CA-D0A1922EC3CF", "name": "Rules and Regulations"},
+        {"subject_id": "092F22B4-CDD5-4D9A-9B81-5ABA969C9C1F", "name": "Academic Consultation"},
+        {"subject_id": "C179A81C-C3B9-4986-B168-15CAC87C6E55", "name": "Boarder`s Programs and Events"},
+        {"subject_id": "70845E4C-EB7C-4F7C-BC87-8630557B8FEF", "name": "Others"}
+      ]
+    }
+  ]
+}
