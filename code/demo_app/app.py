@@ -379,10 +379,12 @@ def get_agent2_triage_tool():
     ])
 
 
-def build_chat_contents():
-    """Build clean alternating conversation history for multi-turn chat."""
+def build_chat_contents(max_window: int = 6):
+    """Build clean alternating conversation history for multi-turn chat with sliding window."""
+    # Batasi hanya N pesan terakhir (sliding window) agar tidak terjadi memory inflation / boros token
+    recent_msgs = st.session_state.messages[-max_window:] if len(st.session_state.messages) > max_window else st.session_state.messages
     contents = []
-    for msg in st.session_state.messages:
+    for msg in recent_msgs:
         if msg["role"] == "assistant" and len(contents) == 0:
             continue
         role = "user" if msg["role"] == "user" else "model"
@@ -770,6 +772,36 @@ Silakan analisis taksonomi dan panggil fungsi tool `route_and_classify_complaint
 
 
 def process_user_input(user_msg: str, arch_mode: str) -> str:
+    cleaned = user_msg.strip().lower()
+    
+    GREETINGS = {"halo", "hai", "hi", "p", "siang", "pagi", "sore", "malam", "selamat pagi", 
+                 "selamat siang", "selamat sore", "selamat malam", "assalamualaikum", "tes", "test"}
+    THANK_YOUS = {"terima kasih", "makasih", "makasi", "tengkyu", "thanks", "ok", "oke", "siap", "sip", "baik", "oke siap"}
+
+    arch_tag = "MULTI_AGENT_SYSTEM" if "Multi-Agent" in arch_mode else "SINGLE_AGENT_BASELINE"
+
+    if cleaned in GREETINGS:
+        st.session_state.last_trace = {
+            "architecture": arch_tag,
+            "type": "EARLY_EXIT_GREETING",
+            "active_agents": ["Gatekeeper Filter"],
+            "total_latency": 0.01,
+            "total_tokens": 0,
+            "reasoning": "⚡ Early-Exit Gatekeeper: Sapaan terdeteksi. Membalas instan tanpa panggil LLM/RAG (Hemat 1.000+ token)."
+        }
+        return "Halo Kak! 👋 Ada yang bisa saya bantu terkait fasilitas kamar atau peraturan di Binus Square hari ini?"
+
+    if cleaned in THANK_YOUS and len(st.session_state.messages) > 1:
+        st.session_state.last_trace = {
+            "architecture": arch_tag,
+            "type": "EARLY_EXIT_ACK",
+            "active_agents": ["Gatekeeper Filter"],
+            "total_latency": 0.01,
+            "total_tokens": 0,
+            "reasoning": "⚡ Early-Exit Gatekeeper: Konfirmasi/terima kasih terdeteksi. Membalas instan tanpa panggil LLM (Hemat 1.000+ token)."
+        }
+        return "Sama-sama Kak! Senang bisa membantu. Jika ada kendala fasilitas hunian lainnya, jangan ragu untuk hubungi kami lagi ya. Semoga harinya menyenangkan! 😊🙏"
+
     top_chunks = search_handbook(user_msg, top_k=2)
 
     active_client = key_manager.get_client() if key_manager else client
