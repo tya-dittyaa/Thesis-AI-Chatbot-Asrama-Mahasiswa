@@ -249,6 +249,21 @@ if "session_stats" not in st.session_state:
     }
 
 
+def validate_and_extract_room(raw_room: str) -> str:
+    """
+    Deterministic Schema Guardrail for Binus Square Room Numbers.
+    Standard Binus Square rooms: Tower A or B followed by 3-4 digits (e.g., A1249, B512, 512, 1204).
+    Returns sanitized room string if valid, otherwise empty string ''.
+    """
+    if not raw_room:
+        return ""
+    match = re.search(r'\b(?:Tower\s*)?([ABab]?[- ]?\d{3,4})\b', str(raw_room).strip())
+    if match:
+        extracted = match.group(1).replace(" ", "").replace("-", "").upper()
+        return extracted
+    return ""
+
+
 def format_ticket_card(ticket_data: dict) -> str:
     """Format clean digital ticket card for chat display adhering strictly to Binus Square standard."""
     urg = ticket_data.get("urgency_level", "Medium")
@@ -523,15 +538,15 @@ TAKSONOMI 5 DEPARTEMEN:
                 break
 
     if func_name == "create_official_ticket" and tool_args:
-        room_num = str(tool_args.get("room_number", "")).strip()
-        invalid_terms = ["belum", "unknown", "tidak tahu", "kamar saya", "kamar penghuni", "none", "null", "n/a", "tidak diinfokan", "-", "tidak ada"]
-        if not room_num or any(inv in room_num.lower() for inv in invalid_terms) or len(room_num) < 2:
+        raw_room = str(tool_args.get("room_number", "")).strip()
+        room_num = validate_and_extract_room(raw_room)
+        if not room_num:
             st.session_state.last_trace = {
                 "architecture": "SINGLE_AGENT_BASELINE",
                 "type": "CLARIFICATION_AND_CONFIRMATION",
                 "latency": round(lat, 3),
                 "tokens": tokens,
-                "reasoning": "Single Agent mendeteksi nomor kamar belum valid. Pembuatan tiket ditahan."
+                "reasoning": "Single Agent mendeteksi format nomor kamar belum valid sesuai standar Binus Square."
             }
             return (
                 "Baik Kak, detail kendala dan jadwalnya sudah saya catat ya. 😊\n\n"
@@ -541,6 +556,7 @@ TAKSONOMI 5 DEPARTEMEN:
 
         ticket_num = f"TKT-BSQ-{datetime.now().strftime('%Y%m')}-{int(time.time()) % 10000:04d}"
         tool_args["ticket_id"] = ticket_num
+        tool_args["room_number"] = room_num
         tool_args["created_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         dept = tool_args.get("target_department", "Estate Department")
         tool_args["department_code"] = OFFICIAL_TAXONOMY.get(dept, {}).get("code", "ED")
@@ -664,13 +680,13 @@ TUGAS ANDA:
     # ---------------------------------------------------------
     # STEP 2: AGEN 2 (Triage & Taxonomy Specialist - Stateless)
     # ---------------------------------------------------------
-    room_number = str(handoff_args.get("room_number", "")).strip()
+    raw_room = str(handoff_args.get("room_number", "")).strip()
+    room_number = validate_and_extract_room(raw_room)
     complaint_summary = str(handoff_args.get("complaint_summary", "Kerusakan fasilitas kamar")).strip()
     preferred_schedule = str(handoff_args.get("preferred_schedule", "Sesuai ketersediaan penghuni / jam operasional")).strip()
 
     # Backend Guardrail check
-    invalid_terms = ["belum", "unknown", "tidak tahu", "kamar saya", "kamar penghuni", "none", "null", "n/a", "tidak diinfokan", "-", "tidak ada"]
-    if not room_number or any(inv in room_number.lower() for inv in invalid_terms) or len(room_number) < 2:
+    if not room_number:
         st.session_state.last_trace = {
             "architecture": "MULTI_AGENT_SYSTEM",
             "type": "CLARIFICATION_AND_CONFIRMATION",
@@ -683,7 +699,7 @@ TUGAS ANDA:
             },
             "total_latency": round(lat_agent1, 3),
             "total_tokens": tok_agent1,
-            "reasoning": "Agen 1 menahan handoff ke Agen 2 karena nomor kamar belum valid."
+            "reasoning": "Agen 1 menahan handoff ke Agen 2 karena nomor kamar belum valid sesuai format Binus Square."
         }
         return (
             "Baik Kak, detail kendala dan jadwalnya sudah saya catat ya. 😊\n\n"
@@ -733,7 +749,8 @@ Silakan analisis taksonomi dan panggil fungsi tool `route_and_classify_complaint
 
     dept_code = triage_args.get("target_department", "ED")
     dept_name = triage_args.get("target_department_name") or DEPT_CODE_TO_NAME.get(dept_code, "Estate Department")
-    category = triage_args.get("problem_category", "AC Service" if "ac" in complaint_summary.lower() else "Room Maintenance")
+    # Clean taxonomy extraction: fallback to "Others" without biased heuristic keywords
+    category = triage_args.get("problem_category") or "Others"
     urgency = triage_args.get("urgency_level", "Medium")
     facility_item = triage_args.get("facility_item", "Fasilitas Kamar")
     reasoning_summary = triage_args.get("reasoning_summary", f"Diarahkan ke {dept_name} sesuai taksonomi resmi.")
