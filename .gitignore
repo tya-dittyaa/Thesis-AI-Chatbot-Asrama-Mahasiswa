@@ -20,6 +20,8 @@ __pycache__/
 
 # Execution Logs
 *.log
+logs/
+code/logs/
 pipeline_evaluation.log
 evaluation_vps.log
 

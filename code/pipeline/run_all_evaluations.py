@@ -18,8 +18,9 @@ from datetime import datetime
 
 PYTHON_EXE = sys.executable
 BASE_DIR = Path(__file__).resolve().parent
-WORKSPACE_ROOT = BASE_DIR.parent
-LOG_FILE = WORKSPACE_ROOT / "pipeline_evaluation.log"
+LOG_DIR = WORKSPACE_ROOT / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+LOG_FILE = LOG_DIR / "pipeline_evaluation.log"
 
 
 def log_print(msg: str, lf):
