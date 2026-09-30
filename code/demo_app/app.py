@@ -315,7 +315,7 @@ def get_single_agent_tool_declaration():
     return types.Tool(function_declarations=[
         types.FunctionDeclaration(
             name="create_official_ticket",
-            description="PANGGIL FUNGSI INI HANYA DAN HANYA JIKA: (1) Nomor kamar penghuni SUDAH DIKETAHUI secara jelas (misal: 512, A1249), DAN (2) Pesan TERAKHIR mahasiswa secara spesifik mengonfirmasi/menyetujui penerbitan tiket baru. DILARANG KERAS memanggil fungsi ini jika nomor kamar belum diinfokan!",
+            description="Panggil jika nomor kamar valid dan mahasiswa menyetujui pembuatan tiket resmi.",
             parameters={
                 "type": "OBJECT",
                 "properties": {
@@ -327,39 +327,18 @@ def get_single_agent_tool_declaration():
                             "Finance",
                             "Marketing",
                             "Student Support Office"
-                        ],
-                        "description": "Departemen penangan resmi Binus Square."
+                        ]
                     },
                     "subject_category": {
                         "type": "STRING",
-                        "enum": unique_categories,
-                        "description": "Kategori subjek resmi Binus Square yang paling tepat."
+                        "enum": unique_categories
                     },
-                    "room_number": {
-                        "type": "STRING",
-                        "description": "Nomor kamar penghuni yang valid (contoh: '512', 'A1249')."
-                    },
-                    "urgency_level": {
-                        "type": "STRING",
-                        "enum": ["Low", "Medium", "High", "Emergency"],
-                        "description": "Tingkat urgensi penanganan."
-                    },
-                    "facility_item": {
-                        "type": "STRING",
-                        "description": "Objek fisik yang bermasalah (contoh: 'Unit AC Kamar', 'Keran Wastafel')."
-                    },
-                    "problem_title": {
-                        "type": "STRING",
-                        "description": "Judul masalah padat dan informatif."
-                    },
-                    "detailed_complaint": {
-                        "type": "STRING",
-                        "description": "Rangkuman lengkap keluhan penghuni."
-                    },
-                    "preferred_schedule": {
-                        "type": "STRING",
-                        "description": "Preferensi jadwal ketersediaan penghuni."
-                    }
+                    "room_number": {"type": "STRING", "description": "Nomor kamar (contoh: 512, A1249)."},
+                    "urgency_level": {"type": "STRING", "enum": ["Low", "Medium", "High", "Emergency"]},
+                    "facility_item": {"type": "STRING"},
+                    "problem_title": {"type": "STRING"},
+                    "detailed_complaint": {"type": "STRING"},
+                    "preferred_schedule": {"type": "STRING"}
                 },
                 "required": [
                     "target_department",
@@ -381,13 +360,13 @@ def get_agent1_delegate_tool():
     return types.Tool(function_declarations=[
         types.FunctionDeclaration(
             name="delegate_to_triage",
-            description="Panggil hanya jika nomor kamar valid dan mahasiswa menyetujui pembuatan tiket perbaikan.",
+            description="Panggil jika nomor kamar valid dan tiket disetujui.",
             parameters={
                 "type": "OBJECT",
                 "properties": {
-                    "room_number": {"type": "STRING", "description": "Nomor kamar valid (misal: A1249, 512)."},
-                    "complaint_summary": {"type": "STRING", "description": "Ringkasan keluhan fasilitas."},
-                    "preferred_schedule": {"type": "STRING", "description": "Jadwal ketersediaan penghuni."}
+                    "room_number": {"type": "STRING"},
+                    "complaint_summary": {"type": "STRING"},
+                    "preferred_schedule": {"type": "STRING"}
                 },
                 "required": ["room_number", "complaint_summary"]
             }
@@ -491,15 +470,10 @@ def process_single_agent(user_msg: str, top_chunks: list) -> str:
     if top_chunks:
         rag_context = "\n\n".join([f"[{c['section_title']} (Halaman {c['page_start']})]\n{c['text_content']}" for c in top_chunks])
 
-    taxonomy_text = "\n".join([f"- {dept} ({data['code']}): {', '.join(data['categories'])}" for dept, data in OFFICIAL_TAXONOMY.items()])
-
-    system_instruction = f"""Asisten AI monolitik (Single-Agent Baseline) portal hunian Binus Square.
-Tugas: Menjawab FAQ aturan, menyaring topik luar asrama, menentukan taksonomi 5 departemen, dan memanggil create_official_ticket.
-ATURAN LISTRIK (kWh): Kuota gratis HANYA laundry (21 kg/bln). Listrik dihitung meteran kamar oleh Finance (FN). Dilarang mengarang angka kuota listrik.
-SYARAT TIKET: Nomor kamar WAJIB ada dan valid. Panggil create_official_ticket hanya jika nomor kamar ada & disetujui.
-
-TAKSONOMI 5 DEPARTEMEN:
-{taxonomy_text}
+    system_instruction = f"""Asisten AI hunian Binus Square (Baseline).
+Tugas: Jawab FAQ aturan asrama & panggil create_official_ticket jika keluhan kamar valid.
+ATURAN LISTRIK (kWh): Dihitung meteran kamar oleh Finance (FN). Kuota gratis HANYA laundry 21 kg/bln. Dilarang mengarang angka kuota listrik.
+SYARAT TIKET: Nomor kamar WAJIB ada & mahasiswa menyetujui.
 
 {f"RAG CONTEXT:\n{rag_context}" if rag_context else ""}
 """
@@ -602,15 +576,14 @@ def process_multi_agent(user_msg: str, top_chunks: list) -> str:
     # ---------------------------------------------------------
     # STEP 1: AGEN 1 (Front Desk & RAG Router - Stateful Memory)
     # ---------------------------------------------------------
-    agent1_system_prompt = f"""Resepsionis Virtual Meja Depan Binus Square. Ramah & efisien ('Halo Kak', 'Baik Kak').
-Tugas:
-1. INFORMATIONAL_QUERY: Jawab pertanyaan aturan asrama secara faktual dari RAG CONTEXT. Listrik (kWh) dihitung meteran kamar oleh Finance (FN) via Boarder Portal; kuota gratis HANYALAH laundry 21 kg/bulan. Dilarang mengarang kuota listrik.
-2. OUT_OF_SCOPE: Tolak sopan di luar urusan hunian asrama, arahkan kembali ke fasilitas hunian.
-3. EMERGENCY: Darurat medis/kesehatan arahkan ke Security Lobby Ext 0 / RS Siloam.
-4. COMPLAINT (Kendala Kamar):
-   - Jika belum ada nomor kamar: Sambut ramah & tanyakan nomor kamar serta rincian kendalanya. JANGAN delegasikan!
-   - Jika nomor kamar ada tapi belum minta tiket: Konfirmasi kesediaan tiket & jadwal. JANGAN delegasikan!
-   - Jika nomor kamar valid & disetujui: PANGGIL delegate_to_triage.
+    agent1_system_prompt = f"""Resepsionis Binus Square. Ramah ('Halo Kak', 'Baik Kak').
+1. FAQ: Jawab faktual dari RAG. Listrik: dihitung meteran kamar oleh Finance (FN); kuota gratis HANYA laundry 21 kg/bln. Dilarang mengarang angka kuota listrik.
+2. Di Luar Asrama: Tolak sopan, arahkan ke asrama.
+3. Medis/Darurat: Arahkan ke Security Lobby Ext 0 / RS Siloam.
+4. Keluhan Kamar:
+   - Belum ada nomor kamar: Tanyakan nomor kamar & kendalanya. JANGAN delegasikan!
+   - Ada kamar tapi belum konfirmasi: Tanyakan apakah mau tiket resmi & jadwal. JANGAN delegasikan!
+   - Kamar valid & disetujui: PANGGIL delegate_to_triage.
 
 {f"RAG CONTEXT (Handbook):\n{rag_context}" if rag_context else ""}
 """
