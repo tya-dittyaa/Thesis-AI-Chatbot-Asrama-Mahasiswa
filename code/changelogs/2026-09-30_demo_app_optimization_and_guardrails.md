@@ -58,16 +58,31 @@ Pada pengujian awal aplikasi interaktif `demo_app/app.py`:
   category = triage_args.get("problem_category") or "Others"
   ```
 
+### F. Prompt Tightening & Eliminasi Redundansi Monolitik
+- **Single Agent (Baseline):** Menghapus duplikasi pencatatan 35 kategori di teks *system prompt* karena sudah tercantum dalam parameter `enum` skema fungsi `create_official_ticket`. Fixed prompt overhead Single Agent berhasil dipangkas dari **932 prompt tokens menjadi ~400 prompt tokens (hemat 57.1%)**.
+- **Multi-Agent (Proposed):** Memadatkan teks instruksi Agen 1 dan parameter fungsi `delegate_to_triage`. Fixed prompt overhead Agen 1 berhasil dipangkas dari **386 prompt tokens menjadi ~240–280 prompt tokens**.
+
+### G. Isolasi Pemicu Darurat Medis vs. Insiden Fasilitas
+- **Masalah:** Frasa hiperbola atau insiden kamar (seperti *"kamar saya meledak"*) sebelumnya memicu aturan darurat yang menggabungkan kata "Darurat" dengan "Medis (RS Siloam)", menyebabkan model menyarankan rumah sakit padahal tidak ada cedera fisik.
+- **Solusi:** Memisahkan pemicu secara tegas:
+  - Kedaruratan medis (RS Siloam / Security Ext 0) **HANYA** dipicu jika mahasiswa secara eksplisit sakit, terluka, atau berdarah.
+  - Insiden fisik kamar ekstrem (korsleting, ledakan alat, banjir) diarahkan sebagai kendala fasilitas darurat yang menanyakan nomor kamar dan objek terdampak secara tenang.
+
+### H. Transparansi Metrik Frontend (Breakdown Prompt vs. Reply)
+- Antarmuka Streamlit (pada balon chat dan Sidebar Live Inspector) diperkaya dengan pencatatan terpilah:
+  $$\text{Format Tampilan: } \text{🪙 \textbf{Total Tokens} (Prompt: \textit{In} | Reply: \textit{Out})}$$
+- Memudahkan penguji sidang mengaudit bahwa efisiensi Multi-Agent berasal dari pemangkasan konteks input (*prompt tokens*).
+
 ---
 
 ## 3. Matriks Hasil Optimasi Token & Efisiensi
 
-| Skenario Pengujian | Sebelum Optimasi | Sesudah Optimasi | Efisiensi |
-| :--- | :---: | :---: | :---: |
-| Sapaan Pertama (*"Halo kak"*) | ~1.150 token (Blind RAG) | **~195 token** | **Hemat 83.0%** |
-| Info Kamar (*"Kamar A1249"*) | ~1.220 token (Blind RAG) | **~240 token** | **Hemat 80.3%** |
-| Pertanyaan RAG (*"Jam tamu"*) | ~1.300 token (RAG Aktif) | **~520 token** (RAG Fokus) | **Hemat 60.0%** |
-| Chat Putaran ke-6 | > 7.000 token (Accumulative) | **~1.100 token** (Sliding Window) | **Hemat 84.2%** |
+| Skenario Pengujian | Awal Mula (Blind RAG) | Setelah Optimasi 1 | **Setelah Tightening Maksimal** | Efisiensi Kumulatif |
+| :--- | :---: | :---: | :---: | :---: |
+| Sapaan / Chat Biasa (*"bwng"*) — Multi-Agent | ~1.150 token | ~414 token | **~260 - 290 token** | **Hemat 76.5%** |
+| Sapaan / Chat Biasa (*"bwng"*) — Single Agent | ~1.150 token | ~974 token | **~410 - 450 token** | **Hemat 62.6%** |
+| Pertanyaan Aturan RAG (*"Jam tamu"*) | ~1.300 token | ~520 token | **~480 - 520 token** | **Hemat 61.5%** |
+| Multi-turn Chat (Putaran ke-6) | > 7.000 token | ~1.100 token | **~750 - 950 token** | **Hemat > 86%** |
 
 ---
 
@@ -88,6 +103,9 @@ Pertanyaan ini sering diajukan dalam sidang tesis terkait justifikasi pemilihan 
 ---
 
 ## 5. Status Verifikasi Git
-- Commit 1: `d775535` (*refactor: replace hardcoded greetings with semantic RAG thresholding*)
-- Commit 2: `67815f3` (*fix: replace heuristic room blacklist with regex schema guardrail and clean taxonomy fallback*)
-- Status: **Pushed to GitHub origin/main (Up to date)**.
+- `d775535` — *refactor: replace hardcoded greetings with semantic RAG thresholding*
+- `67815f3` — *fix: replace heuristic room blacklist with regex schema guardrail and clean taxonomy fallback*
+- `3809cf0` — *feat: compress prompts and display transparent prompt vs reply token breakdown in UI*
+- `ff7fb1c` — *perf: tighten single agent and multi agent prompts to slash overhead tokens to ~240-400*
+- `b228191` — *fix: refine emergency trigger so facility incidents ask for room number instead of hallucinating RS Siloam*
+- Status: **Pushed to GitHub origin/main (Synchronized)**.
