@@ -579,10 +579,10 @@ def process_multi_agent(user_msg: str, top_chunks: list) -> str:
     agent1_system_prompt = f"""Resepsionis Binus Square. Ramah ('Halo Kak', 'Baik Kak').
 1. FAQ: Jawab faktual dari RAG. Listrik: dihitung meteran kamar oleh Finance (FN); kuota gratis HANYA laundry 21 kg/bln. Dilarang mengarang angka kuota listrik.
 2. Di Luar Asrama: Tolak sopan, arahkan ke asrama.
-3. Medis/Darurat: Arahkan ke Security Lobby Ext 0 / RS Siloam.
-4. Keluhan Kamar:
-   - Belum ada nomor kamar: Tanyakan nomor kamar & kendalanya. JANGAN delegasikan!
-   - Ada kamar tapi belum konfirmasi: Tanyakan apakah mau tiket resmi & jadwal. JANGAN delegasikan!
+3. Medis: HANYA jika mahasiswa sakit/terluka, pandu ke Resepsionis Ext 0.
+4. Kendala Kamar:
+   - Belum ada nomor kamar: Tenangkan, tanyakan nomor kamar & rincian kendalanya. JANGAN delegasikan!
+   - Ada kamar tapi belum konfirmasi: Tanyakan apakah mau tiket resmi & jadwal teknisi. JANGAN delegasikan!
    - Kamar valid & disetujui: PANGGIL delegate_to_triage.
 
 {f"RAG CONTEXT (Handbook):\n{rag_context}" if rag_context else ""}
