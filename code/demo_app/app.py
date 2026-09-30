@@ -381,13 +381,13 @@ def get_agent1_delegate_tool():
     return types.Tool(function_declarations=[
         types.FunctionDeclaration(
             name="delegate_to_triage",
-            description="PANGGIL FUNGSI INI HANYA JIKA: (1) Nomor kamar penghuni sudah diketahui secara nyata (misal: 'A1249', '512'), DAN (2) Mahasiswa sudah meminta atau mengonfirmasi pembuatan tiket. DILARANG memanggil jika nomor kamar belum ada!",
+            description="Panggil hanya jika nomor kamar valid dan mahasiswa menyetujui pembuatan tiket perbaikan.",
             parameters={
                 "type": "OBJECT",
                 "properties": {
-                    "room_number": {"type": "STRING", "description": "Nomor kamar valid (misal: 'A1249', '512')."},
-                    "complaint_summary": {"type": "STRING", "description": "Ringkasan keluhan kerusakan fasilitas."},
-                    "preferred_schedule": {"type": "STRING", "description": "Jadwal ketersediaan penghuni (misal: 'Besok jam 10 pagi')."}
+                    "room_number": {"type": "STRING", "description": "Nomor kamar valid (misal: A1249, 512)."},
+                    "complaint_summary": {"type": "STRING", "description": "Ringkasan keluhan fasilitas."},
+                    "preferred_schedule": {"type": "STRING", "description": "Jadwal ketersediaan penghuni."}
                 },
                 "required": ["room_number", "complaint_summary"]
             }
@@ -493,17 +493,10 @@ def process_single_agent(user_msg: str, top_chunks: list) -> str:
 
     taxonomy_text = "\n".join([f"- {dept} ({data['code']}): {', '.join(data['categories'])}" for dept, data in OFFICIAL_TAXONOMY.items()])
 
-    system_instruction = f"""
-Anda adalah sistem asisten AI monolitik (Single-Agent Baseline) untuk portal hunian Binus Square.
-Seluruh tugas (menjawab FAQ aturan hunian, menyaring topik di luar asrama, menentukan taksonomi 5 departemen, dan memanggil fungsi tiket) ditanggung sepenuhnya oleh Anda dalam satu prompt ini.
-
-ATURAN ANTI-HALUSINASI KUOTA LISTRIK (kWh):
-- Di Handbook Binus Square, kuota bulanan gratis HANYALAH LAUNDRY (21 kg/bulan).
-- Tagihan listrik dihitung per meteran kamar masing-masing dan dikelola langsung oleh Finance (FN) via Boarder Portal. Dilarang mengarang angka kuota listrik (jangan tebak 100 kWh dll).
-
-SYARAT TIKET:
-- Nomor kamar WAJIB ada dan valid sebelum membuat tiket.
-- Hanya panggil `create_official_ticket` jika nomor kamar ada dan mahasiswa menyetujui.
+    system_instruction = f"""Asisten AI monolitik (Single-Agent Baseline) portal hunian Binus Square.
+Tugas: Menjawab FAQ aturan, menyaring topik luar asrama, menentukan taksonomi 5 departemen, dan memanggil create_official_ticket.
+ATURAN LISTRIK (kWh): Kuota gratis HANYA laundry (21 kg/bln). Listrik dihitung meteran kamar oleh Finance (FN). Dilarang mengarang angka kuota listrik.
+SYARAT TIKET: Nomor kamar WAJIB ada dan valid. Panggil create_official_ticket hanya jika nomor kamar ada & disetujui.
 
 TAKSONOMI 5 DEPARTEMEN:
 {taxonomy_text}
@@ -522,7 +515,9 @@ TAKSONOMI 5 DEPARTEMEN:
     resp = call_with_retry(model_name, contents, config)
     lat = time.time() - t0
     usage = getattr(resp, "usage_metadata", None)
-    tokens = (getattr(usage, "prompt_token_count", 0) or 0) + (getattr(usage, "candidates_token_count", 0) or 0)
+    in_tokens = getattr(usage, "prompt_token_count", 0) or 0
+    out_tokens = getattr(usage, "candidates_token_count", 0) or 0
+    tokens = in_tokens + out_tokens
 
     func_name = ""
     tool_args = {}
@@ -574,6 +569,8 @@ TAKSONOMI 5 DEPARTEMEN:
             "type": "OFFICIAL_TICKET_CREATED",
             "latency": round(lat, 3),
             "tokens": tokens,
+            "in_tokens": in_tokens,
+            "out_tokens": out_tokens,
             "ticket": tool_args,
             "reasoning": f"Single Agent Baseline mengeksekusi tool dalam 1 pemanggilan monolitik untuk {dept} ({tool_args.get('subject_category')})."
         }
@@ -585,6 +582,8 @@ TAKSONOMI 5 DEPARTEMEN:
         "type": "HANDBOOK_RAG_ANSWER" if top_chunks else "GENERAL_CONVERSATION",
         "latency": round(lat, 3),
         "tokens": tokens,
+        "in_tokens": in_tokens,
+        "out_tokens": out_tokens,
         "matched_section": top_chunks[0]["section_title"] if top_chunks else None,
         "page": top_chunks[0]["page_start"] if top_chunks else None,
         "reasoning": "Single Agent Baseline memproses percakapan/FAQ dalam 1 context window monolitik."
@@ -603,26 +602,17 @@ def process_multi_agent(user_msg: str, top_chunks: list) -> str:
     # ---------------------------------------------------------
     # STEP 1: AGEN 1 (Front Desk & RAG Router - Stateful Memory)
     # ---------------------------------------------------------
-    agent1_system_prompt = f"""
-Anda adalah Agen 1: Penerima Pesan, Validasi & RAG Asrama (Reception & Dialog Router) di meja depan asrama Binus Square.
+    agent1_system_prompt = f"""Resepsionis Virtual Meja Depan Binus Square. Ramah & efisien ('Halo Kak', 'Baik Kak').
+Tugas:
+1. INFORMATIONAL_QUERY: Jawab pertanyaan aturan asrama secara faktual dari RAG CONTEXT. Listrik (kWh) dihitung meteran kamar oleh Finance (FN) via Boarder Portal; kuota gratis HANYALAH laundry 21 kg/bulan. Dilarang mengarang kuota listrik.
+2. OUT_OF_SCOPE: Tolak sopan di luar urusan hunian asrama, arahkan kembali ke fasilitas hunian.
+3. EMERGENCY: Darurat medis/kesehatan arahkan ke Security Lobby Ext 0 / RS Siloam.
+4. COMPLAINT (Kendala Kamar):
+   - Jika belum ada nomor kamar: Sambut ramah & tanyakan nomor kamar serta rincian kendalanya. JANGAN delegasikan!
+   - Jika nomor kamar ada tapi belum minta tiket: Konfirmasi kesediaan tiket & jadwal. JANGAN delegasikan!
+   - Jika nomor kamar valid & disetujui: PANGGIL delegate_to_triage.
 
-KEPRIBADIAN:
-- Ramah, sopan, efisien khas meja depan asrama Binus Square ("Halo Kak", "Baik Kak", "Tentu Kak", "Sip Kak").
-- Hindari kata klise berulang-ulang seperti selalu memulai dengan "Aduh", "Waduh".
-
-TUGAS ANDA:
-1. INFORMATIONAL_QUERY: Pertanyaan aturan asrama, fasilitas, jam tamu, kolam, gym, denda, kuota laundry.
-   Jawab langsung ramah dan 100% faktual berdasarkan RAG CONTEXT (Handbook).
-   * Khusus kuota listrik (kWh): Di handbook HANYALAH laundry yang memiliki kuota (21 kg/bulan). Tagihan listrik dihitung pemakaian riil meteran kamar oleh Finance (FN) via Boarder Portal. Dilarang mengarang angka kuota listrik (jangan sebut 100 kWh dll).
-2. OUT_OF_SCOPE: Topik di luar urusan hunian asrama (misal: coding, resep, politik). Tolak sopan dan arahkan kembali ke urusan asrama.
-3. EMERGENCY: Darurat medis/kesehatan. Pandu ke Security Lobby Ext. 0 / RS Siloam.
-4. COMPLAINT (Kendala Fasilitas Kamar / Asrama):
-   - JIKA NOMOR KAMAR BELUM ADA: Sambut ramah dan tanyakan nomor kamar serta rincian kendalanya. JANGAN didelegasikan ke Agen 2!
-   - JIKA NOMOR KAMAR SUDAH ADA TETAPI MAHASISWA BELUM MENGONFIRMASI PEMBUATAN TIKET: Tanyakan apakah ingin dibuatkan tiket resmi dan tanyakan preferensi jadwal teknisi. JANGAN didelegasikan ke Agen 2 sebelum disetujui!
-   - JIKA NOMOR KAMAR SUDAH JELAS (misal: 512, A1249) DAN MAHASISWA SUDAH MENYETUJUI/MEMINTA TIKET DIBUAT:
-     PANGGIL fungsi `delegate_to_triage` untuk meneruskan ke Agen 2 (Spesialis Triase)!
-
-{f"REFERENSI ATURAN HANDBOOK RELEVAN (RAG CONTEXT):\n{rag_context}" if rag_context else ""}
+{f"RAG CONTEXT (Handbook):\n{rag_context}" if rag_context else ""}
 """
     contents = build_chat_contents()
     agent1_tool = get_agent1_delegate_tool()
@@ -636,7 +626,9 @@ TUGAS ANDA:
     resp1 = call_with_retry(model_name, contents, config1)
     lat_agent1 = time.time() - t0_agent1
     usage1 = getattr(resp1, "usage_metadata", None)
-    tok_agent1 = (getattr(usage1, "prompt_token_count", 0) or 0) + (getattr(usage1, "candidates_token_count", 0) or 0)
+    in_tok1 = getattr(usage1, "prompt_token_count", 0) or 0
+    out_tok1 = getattr(usage1, "candidates_token_count", 0) or 0
+    tok_agent1 = in_tok1 + out_tok1
 
     # Check if Agen 1 triggered handoff to Agen 2
     handoff_args = {}
@@ -667,10 +659,14 @@ TUGAS ANDA:
                 "role": "Receptionist & Dialog Router",
                 "status": "Dijawab Langsung (FAQ / Percakapan)",
                 "latency": round(lat_agent1, 3),
-                "tokens": tok_agent1
+                "tokens": tok_agent1,
+                "in_tokens": in_tok1,
+                "out_tokens": out_tok1
             },
             "total_latency": round(lat_agent1, 3),
             "total_tokens": tok_agent1,
+            "in_tokens": in_tok1,
+            "out_tokens": out_tok1,
             "matched_section": top_chunks[0]["section_title"] if is_rag else None,
             "page": top_chunks[0]["page_start"] if is_rag else None,
             "reasoning": "Agen 1 menangani percakapan/RAG langsung tanpa membebani Agen 2 & Agen 3 (Context Window Bersih)."
@@ -736,7 +732,9 @@ Silakan analisis taksonomi dan panggil fungsi tool `route_and_classify_complaint
     resp2 = call_with_retry(model_name, agent2_input, config2)
     lat_agent2 = time.time() - t0_agent2
     usage2 = getattr(resp2, "usage_metadata", None)
-    tok_agent2 = (getattr(usage2, "prompt_token_count", 0) or 0) + (getattr(usage2, "candidates_token_count", 0) or 0)
+    in_tok2 = getattr(usage2, "prompt_token_count", 0) or 0
+    out_tok2 = getattr(usage2, "candidates_token_count", 0) or 0
+    tok_agent2 = in_tok2 + out_tok2
 
     triage_args = {}
     if hasattr(resp2, "function_calls") and resp2.function_calls:
@@ -789,6 +787,8 @@ Silakan analisis taksonomi dan panggil fungsi tool `route_and_classify_complaint
 
     tot_lat = round(lat_agent1 + lat_agent2 + lat_agent3, 3)
     tot_tok = tok_agent1 + tok_agent2 + tok_agent3
+    tot_in = in_tok1 + in_tok2
+    tot_out = out_tok1 + out_tok2
 
     st.session_state.last_trace = {
         "architecture": "MULTI_AGENT_SYSTEM",
@@ -798,7 +798,9 @@ Silakan analisis taksonomi dan panggil fungsi tool `route_and_classify_complaint
             "role": "Receptionist & Dialog Router",
             "status": f"Handoff Sukses (Kamar {room_number} Terverifikasi)",
             "latency": round(lat_agent1, 3),
-            "tokens": tok_agent1
+            "tokens": tok_agent1,
+            "in_tokens": in_tok1,
+            "out_tokens": out_tok1
         },
         "agent2": {
             "role": "Triage & Taxonomy Specialist",
@@ -807,17 +809,23 @@ Silakan analisis taksonomi dan panggil fungsi tool `route_and_classify_complaint
             "category": category,
             "urgency": urgency,
             "latency": round(lat_agent2, 3),
-            "tokens": tok_agent2
+            "tokens": tok_agent2,
+            "in_tokens": in_tok2,
+            "out_tokens": out_tok2
         },
         "agent3": {
             "role": "Ticket Dispatcher & Formatter",
             "status": "Tiket Resmi Diterbitkan & Terverifikasi",
             "ticket_id": ticket_num,
             "latency": round(lat_agent3, 3),
-            "tokens": tok_agent3
+            "tokens": tok_agent3,
+            "in_tokens": 0,
+            "out_tokens": 0
         },
         "total_latency": tot_lat,
         "total_tokens": tot_tok,
+        "in_tokens": tot_in,
+        "out_tokens": tot_out,
         "ticket": ticket_data,
         "reasoning": f"Pipeline Multi-Agent sukses: Agen 1 memvalidasi keluhan -> Agen 2 melakukan triase ke {dept_name} ({category}) -> Agen 3 menerbitkan tiket resmi {ticket_num}."
     }
@@ -887,28 +895,28 @@ with st.sidebar:
             # Step 1: Agen 1
             ag1 = trace.get("agent1", {})
             st.markdown(f"**Agen 1 (Front Desk):** `{ag1.get('status', 'Standby')}`")
-            st.caption(f"⏱️ Latensi: {ag1.get('latency', 0)}s &nbsp;|&nbsp; 🪙 Token: {ag1.get('tokens', 0)}")
+            st.caption(f"⏱️ {ag1.get('latency', 0)}s | 🪙 **{ag1.get('tokens', 0):,} tok** (In: {ag1.get('in_tokens', 0):,} | Out: {ag1.get('out_tokens', 0):,})")
 
             # Step 2: Agen 2 (if invoked)
             if "agent2" in trace:
                 ag2 = trace.get("agent2", {})
                 st.markdown(f"**Agen 2 (Triase):** `{ag2.get('department', '')}`")
                 st.caption(f"🏷️ Kategori: {ag2.get('category')} ({ag2.get('urgency')})")
-                st.caption(f"⏱️ Latensi: {ag2.get('latency', 0)}s &nbsp;|&nbsp; 🪙 Token: {ag2.get('tokens', 0)}")
+                st.caption(f"⏱️ {ag2.get('latency', 0)}s | 🪙 **{ag2.get('tokens', 0):,} tok** (In: {ag2.get('in_tokens', 0):,} | Out: {ag2.get('out_tokens', 0):,})")
 
             # Step 3: Agen 3 (if invoked)
             if "agent3" in trace:
                 ag3 = trace.get("agent3", {})
                 st.markdown(f"**Agen 3 (Tiket):** `{ag3.get('ticket_id', '')}`")
-                st.caption(f"⏱️ Latensi: {ag3.get('latency', 0)}s &nbsp;|&nbsp; 🪙 Token: {ag3.get('tokens', 0)}")
+                st.caption(f"⏱️ {ag3.get('latency', 0)}s | 🪙 Formatter Lokal (0 tok)")
 
-            st.caption(f"📊 Total: Latensi {trace.get('total_latency', 0)}s | Token {trace.get('total_tokens', 0)}")
+            st.caption(f"📊 **Total Turn:** {trace.get('total_latency', 0)}s | 🪙 **{trace.get('total_tokens', 0):,} tokens** (Prompt: {trace.get('in_tokens', 0):,} | Reply: {trace.get('out_tokens', 0):,})")
 
         # Single Agent Mode Inspector View
         elif arch == "SINGLE_AGENT_BASELINE":
             st.warning("Pipeline: **Single Agent Baseline**")
             st.markdown(f"**Status:** `{trace.get('type')}`")
-            st.caption(f"⏱️ Latensi: {trace.get('latency', 0)}s &nbsp;|&nbsp; 🪙 Token: {trace.get('tokens', 0)}")
+            st.caption(f"⏱️ Latensi: {trace.get('latency', 0)}s | 🪙 **{trace.get('tokens', 0):,} tokens** (Prompt: {trace.get('in_tokens', 0):,} | Reply: {trace.get('out_tokens', 0):,})")
 
         # Ticket Card Payload Display if generated
         if t_type == "OFFICIAL_TICKET_CREATED":
@@ -1016,8 +1024,11 @@ for msg in st.session_state.messages:
                 m = msg["meta"]
                 lat_val = m.get("latency", 0)
                 tok_val = m.get("tokens", 0)
+                in_val = m.get("in_tokens", 0)
+                out_val = m.get("out_tokens", 0)
                 arch_tag = "🔀 Multi-Agent" if "MULTI" in m.get("architecture", "").upper() else "👤 Single Agent"
-                st.caption(f"⚡ **{lat_val:.2f}s** &nbsp;|&nbsp; 🪙 **{tok_val:,} tokens** &nbsp;|&nbsp; {arch_tag}")
+                tok_str = f"🪙 **{tok_val:,} tokens** (Prompt: {in_val:,} | Reply: {out_val:,})" if in_val > 0 else f"🪙 **{tok_val:,} tokens**"
+                st.caption(f"⚡ **{lat_val:.2f}s** &nbsp;|&nbsp; {tok_str} &nbsp;|&nbsp; {arch_tag}")
 
 # Handle preset input if button clicked
 user_query = None
@@ -1044,10 +1055,14 @@ if user_query:
                 t = st.session_state.last_trace
                 lat = t.get("total_latency") or t.get("latency", 0.0)
                 tok = t.get("total_tokens") or t.get("tokens", 0)
+                in_tok = t.get("in_tokens", 0)
+                out_tok = t.get("out_tokens", 0)
                 arch_tag = t.get("architecture", arch_mode)
                 meta = {
                     "latency": lat,
                     "tokens": tok,
+                    "in_tokens": in_tok,
+                    "out_tokens": out_tok,
                     "architecture": arch_tag,
                     "type": t.get("type", "GENERAL")
                 }
@@ -1059,6 +1074,8 @@ if user_query:
                     "turn": st.session_state.session_stats["turns"],
                     "latency": lat,
                     "tokens": tok,
+                    "in_tokens": in_tok,
+                    "out_tokens": out_tok,
                     "arch": arch_tag,
                     "type": t.get("type")
                 })
@@ -1067,8 +1084,11 @@ if user_query:
             if meta:
                 lat_val = meta.get("latency", 0)
                 tok_val = meta.get("tokens", 0)
+                in_val = meta.get("in_tokens", 0)
+                out_val = meta.get("out_tokens", 0)
                 arch_tag = "🔀 Multi-Agent" if "MULTI" in meta.get("architecture", "").upper() else "👤 Single Agent"
-                st.caption(f"⚡ **{lat_val:.2f}s** &nbsp;|&nbsp; 🪙 **{tok_val:,} tokens** &nbsp;|&nbsp; {arch_tag}")
+                tok_str = f"🪙 **{tok_val:,} tokens** (Prompt: {in_val:,} | Reply: {out_val:,})" if in_val > 0 else f"🪙 **{tok_val:,} tokens**"
+                st.caption(f"⚡ **{lat_val:.2f}s** &nbsp;|&nbsp; {tok_str} &nbsp;|&nbsp; {arch_tag}")
 
             st.session_state.messages.append({"role": "assistant", "content": reply, "meta": meta})
             st.rerun()
