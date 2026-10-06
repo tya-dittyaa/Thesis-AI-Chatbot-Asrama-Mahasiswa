@@ -21,7 +21,7 @@ __pycache__/
 # Execution Logs
 *.log
 logs/
-code/logs/
+**/logs/
 pipeline_evaluation.log
 evaluation_vps.log
 
@@ -31,19 +31,16 @@ evaluation_vps.log
 *.tmp
 
 # Large Datasets & Historical Population Dumps (>10MB)
-code/data/raw/
-code/data/processed/boarder_feedback_dataset.csv
-code/pipeline/01_data_filtering/data/feedback_2015_2025.csv
-code/pipeline/02_data_splitting/data/feedback_2015_2025_clean.csv
-code/pipeline/02_data_splitting/data/train_pool.csv
-code/pipeline/02_data_splitting/data/anomaly_samples.csv
+**/data/raw/
+**/boarder_feedback_dataset.csv
+**/feedback_2015_2025.csv
+**/feedback_2015_2025_clean.csv
+**/train_pool.csv
+**/anomaly_samples.csv
 
 # EXPLICITLY KEEP: Official Golden Benchmark & RAG Chunks
-!code/pipeline/02_data_splitting/data/test_golden_benchmark_500.csv
-!code/pipeline/05_single_agent_baseline/data/test_golden_benchmark_500.csv
-!code/pipeline/06_multi_agent_system/data/test_golden_benchmark_500.csv
-!code/pipeline/03_handbook_rag_prep/data/handbook_chunks.json
-!code/pipeline/06_multi_agent_system/data/handbook_chunks.json
+!**/test_golden_benchmark_500.csv
+!**/handbook_chunks.json
 
 # Large Zip Bundles (Deploy archives)
 *.zip
