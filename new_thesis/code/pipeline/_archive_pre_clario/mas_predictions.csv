@@ -1,0 +1,28 @@
+FeedbackHeaderID,CreatedDate,SubjectCategory,InitialDepartmentName,HandledDepartmentName,IsRerouted,PredictedDepartmentCode,PredictedDepartmentName,PredictedCategory,UrgencyLevel,FacilityItem,ConfidenceScore,RoutingReason,OfficialStaffReply,IsCorrect,WasRerouteFixed,FunctionCallSuccess,Latency_Agent1,Latency_Agent2,Latency_Agent3,TotalLatencySeconds,TotalTokens,ErrorMessage
+10A05D92-02F8-41B2-BC3A-9E94B78259D3,2019-03-11 17:46:57.483,AC Service,Estate Department,Estate Department,0,ED,Estate Department,AC Service,High,AC,0.9,"Keluhan menyebut bunyi makin parah dan mengeluarkan batu es (es menumpuk/keluar dari unit), yang merupakan gejala khas kerusakan fisik unit AC (mis. evaporator kotor/membeku, drainase tersumbat, atau kompresor bermasalah). Ini murni kerusakan teknis fasilitas kamar sehingga menjadi ranah Estate Department dengan sub-kategori resmi 'AC Service'. Penghuni meminta penanganan segera di kamar, sehingga urgensi ditetapkan High (gangguan aktif yang memburuk dan berpotensi menimbulkan kebocoran/air serta kerusakan lanjutan).","Dear Penghuni Binus Square,
+
+Terima kasih atas informasi yang telah Anda sampaikan. Kami memahami kekhawatiran Anda terkait kondisi AC di kamar yang semakin berisik dan mengeluarkan batu es. Kami mohon maaf atas ketidaknyamanan yang terjadi.
+
+Laporan Anda telah kami terima dan segera kami teruskan ke Estate Department (ED) untuk ditindaklanjuti. Mengingat sifat keluhan yang aktif dan berpotensi menimbulkan kerusakan lanjutan, tim kami akan memprioritaskan penanganan ini.
+
+Langkah tindak lanjut:
+1. Teknisi dari Estate Department akan menghubungi Anda untuk mengatur jadwal kunjungan ke kamar.
+2. Mohon pastikan ada orang di kamar saat teknisi datang agar pemeriksaan dan perbaikan dapat dilakukan dengan lancar.
+3. Sementara itu, Anda dapat mematikan unit AC terlebih dahulu untuk mencegah kerusakan lebih lanjut dan menjaga keamanan.
+
+Kami akan menginformasikan perkembangan penanganan secepatnya. Jika ada hal mendesak, silakan hubungi Front Desk Binus Square.
+
+Salam,
+Tim Manajemen Binus Square",1,0,1,3.286,3.902,4.941,12.129,10261,
+AF0A66BE-93CB-44A9-8489-8F5F824021B6,2018-08-08 21:14:26.343,Building Facilities,Estate Department,Estate Department,0,ED,Estate Department,Room Maintenance,Medium,Ceiling (Plafon Kamar) - Jamur,0.97,"Penghuni melaporkan jamur pada plafon kamar yang semakin menyebar dan mengotori ruangan, serta meminta pembersihan dan pengecatan ulang. Ini merupakan kerusakan/pemeliharaan fisik bangunan (perabot & struktur kamar) yang menjadi tanggung jawab Estate Department sesuai sub-kategori Room Maintenance. Urgensi Medium karena tidak mengancam keselamatan langsung namun perlu penanganan (potensi masalah kelembapan/ventilasi berulang).","Dear Penghuni Binus Square,
+
+Terima kasih atas laporan yang telah Anda sampaikan mengenai kondisi plafon kamar yang ditumbuhi jamur dan permintaan untuk pembersihan serta pengecatan ulang. Kami memahami bahwa kondisi ini tentunya membuat Anda tidak nyaman, terlebih karena telah berulang kali terjadi.
+
+Kami informasikan bahwa laporan Anda telah kami terima dan teruskan kepada Estate Department untuk ditindaklanjuti. Tim Estate Department akan melakukan pemeriksaan terkait sumber kelembapan pada plafon kamar Anda, kemudian melakukan pembersihan jamur serta pengecatan ulang sesuai kebutuhan.
+
+Untuk kelancaran proses penanganan, kami mohon kesediaan Anda untuk berada di kamar atau memberikan akses kepada petugas saat tim Estate Department datang melakukan pemeriksaan dan perbaikan. Tim kami akan menghubungi Anda terlebih dahulu untuk mengonfirmasi jadwal kunjungan.
+
+Kami mohon maaf atas ketidaknyamanan yang Anda alami. Terima kasih atas kesabaran dan kerja sama Anda.
+
+Salam,
+Tim Manajemen Binus Square",1,0,1,3.948,4.456,5.421,13.824,11219,

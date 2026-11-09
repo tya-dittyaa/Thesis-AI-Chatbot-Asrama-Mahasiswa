@@ -1,37 +1,42 @@
 {
-  "timestamp": "2026-11-09T09:10:38.906421",
-  "architecture": "Multi-Agent System (3-Agent Pipeline with Distilled RAG & Native Function Calling)",
-  "model_used": "gemini-3.5-flash-lite",
+  "timestamp": "2026-11-09T22:13:29.400279",
+  "architecture": "Multi-Agent System (3-Agent Pipeline with Native Function Calling & RAG)",
+  "model_used": "gemini-3.1-flash-lite",
   "total_evaluated": 500,
-  "overall_accuracy_percent": 89.8,
-  "function_call_success_rate": 100.0,
-  "average_latency_seconds": 5.8,
-  "average_tokens_per_ticket": 3761.8,
+  "overall_accuracy_percent": 73.2,
+  "function_call_success_rate": 96.8,
+  "average_latency_seconds": 28.37,
+  "average_tokens_per_ticket": 3567.8,
+  "reroute_analysis": {
+    "total_rerouted_tickets": 1,
+    "reroute_accuracy_percent": 0.0,
+    "reroute_successfully_corrected": 0
+  },
   "per_department_metrics": {
     "Estate Department": {
       "total_tickets": 100,
-      "correct_predictions": 97,
-      "accuracy_percent": 97.0
+      "correct_predictions": 86,
+      "accuracy_percent": 86.0
     },
     "Operations": {
       "total_tickets": 100,
-      "correct_predictions": 90,
-      "accuracy_percent": 90.0
+      "correct_predictions": 74,
+      "accuracy_percent": 74.0
     },
     "Finance": {
       "total_tickets": 100,
-      "correct_predictions": 85,
-      "accuracy_percent": 85.0
+      "correct_predictions": 64,
+      "accuracy_percent": 64.0
     },
     "Marketing": {
       "total_tickets": 100,
-      "correct_predictions": 90,
-      "accuracy_percent": 90.0
+      "correct_predictions": 71,
+      "accuracy_percent": 71.0
     },
     "Student Support Office": {
       "total_tickets": 100,
-      "correct_predictions": 87,
-      "accuracy_percent": 87.0
+      "correct_predictions": 71,
+      "accuracy_percent": 71.0
     }
   }
 }

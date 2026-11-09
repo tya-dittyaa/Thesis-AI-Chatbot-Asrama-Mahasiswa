@@ -9,9 +9,15 @@ Mendukung:
 """
 
 import os
+import sys
 import time
 import threading
+import warnings
 from typing import List, Set, Optional
+
+warnings.filterwarnings("ignore", message=".*automatic function calling.*")
+warnings.filterwarnings("ignore", category=UserWarning, module="google.genai")
+
 from dotenv import load_dotenv
 from google import genai
 
@@ -40,6 +46,7 @@ class ApiKeyManager:
         self.min_interval = min_interval_per_key
         self.last_used = [0.0 for _ in self.keys]
         self.exhausted: Set[int] = set()
+        self.daily_exhausted: Set[int] = set()
         self.invalid: Set[int] = set()
         self.current_idx = 0
         self.lock = threading.Lock()
@@ -50,16 +57,16 @@ class ApiKeyManager:
         """Pilih key yang paling siap dan tunggu di luar lock jika belum mencapai min_interval."""
         while True:
             with self.lock:
-                available = [i for i in range(len(self.keys)) if i not in self.exhausted and i not in self.invalid]
+                available = [i for i in range(len(self.keys)) if i not in self.exhausted and i not in self.invalid and i not in self.daily_exhausted]
                 if not available:
-                    valid_keys = [i for i in range(len(self.keys)) if i not in self.invalid]
+                    valid_keys = [i for i in range(len(self.keys)) if i not in self.invalid and i not in self.daily_exhausted]
                     if not valid_keys:
-                        raise RuntimeError("Semua API key tidak valid!")
-                    print(f"\n[ApiKeyManager] Semua key ({len(valid_keys)}) kena rate limit. Reset dalam 25s...")
+                        raise RuntimeError(f"Semua {len(self.keys)} API key kuota harian habis (RPD limit) atau invalid!")
+                    print(f"\n[ApiKeyManager] Semua key aktif ({len(valid_keys)}) kena RPM pacing. Tunggu reset...")
                     self.exhausted.clear()
                     available = valid_keys
                     for i in available:
-                        self.last_used[i] = time.time() + 25.0
+                        self.last_used[i] = time.time() + 5.0
 
                 # Pilih key dengan waktu tunggu paling singkat
                 now = time.time()
@@ -92,6 +99,13 @@ class ApiKeyManager:
             target = idx if idx is not None else self.current_idx
             self.invalid.add(target)
             print(f"\n[ApiKeyManager] Key #{target + 1} ditandai INVALID.")
+
+    def mark_daily_exhausted(self, idx: Optional[int] = None):
+        with self.lock:
+            target = idx if idx is not None else self.current_idx
+            self.daily_exhausted.add(target)
+            avail = len([i for i in range(len(self.keys)) if i not in self.daily_exhausted and i not in self.invalid])
+            print(f"\n[ApiKeyManager] Key #{target + 1} kuota harian habis (RPD limit), dinonaktifkan ({avail} key tersisa).")
 
     def rotate(self, wait_sec: int = 1, idx: Optional[int] = None):
         with self.lock:

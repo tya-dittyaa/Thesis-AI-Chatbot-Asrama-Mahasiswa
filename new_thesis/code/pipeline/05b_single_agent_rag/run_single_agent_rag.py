@@ -11,9 +11,14 @@ import json
 import re
 import argparse
 import threading
+import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from datetime import datetime
+
+warnings.filterwarnings("ignore", message=".*automatic function calling.*")
+warnings.filterwarnings("ignore", category=UserWarning, module="google.genai")
+
 import pandas as pd
 from tqdm import tqdm
 from dotenv import load_dotenv
@@ -34,6 +39,10 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from pipeline.api_key_manager import ApiKeyManager
+try:
+    from pipeline.clario_client import call_clario_completion
+except ImportError:
+    call_clario_completion = None
 
 DEPT_CODE_TO_NAME = {
     "ED": "Estate Department",
@@ -109,17 +118,26 @@ class HandbookRetriever:
 def call_gemini_single_rag(model_name: str, system_prompt: str, ticket_payload: dict, chunks_context: str, key_manager: ApiKeyManager):
     user_content = (
         f"DATA TIKET PENGADUAN PENGHUNI:\n"
-        f"- Judul/Subjek Kategori Mahasiswa: {ticket_payload.get('SubjectCategory', '-')}\n"
-        f"- Departemen Pilihan Mahasiswa: {ticket_payload.get('InitialDepartmentName', '-')}\n"
         f"- Isi Pesan Keluhan: {ticket_payload.get('CleanedComplaint', '-')}\n\n"
         f"POTONGAN ATURAN HANDBOOK ASRAMA (REFERENSI TAMBAHAN RAG):\n"
         f"{chunks_context if chunks_context else '(Tidak ada pasal spesifik terkait)'}\n\n"
         f"CATATAN PENTING: Gunakan potongan Handbook di atas HANYA sebagai referensi pendukung kebijakan. "
-        f"Untuk penentuan `target_department`, tetap prioritaskan inti keluhan, `Judul/Subjek Kategori Mahasiswa` "
-        f"(khususnya `Room Payment and Due Date`, `Electricity Bill`, dan `Security Deposit` wajib ke `Finance (FN)`; "
-        f"`Renewal`, `Check Out`, `Promotion Program` ke `Marketing (MR)`), serta `Departemen Pilihan Mahasiswa` pada kasus multi-topik.\n"
+        f"Untuk penentuan `target_department`, prioritaskan inti keluhan dan direktori departemen resmi.\n"
         f"Silakan berikan respons JSON sesuai format panduan."
     )
+
+    clario_key = os.getenv("CLARIO_API_KEY", "").strip()
+    if call_clario_completion and clario_key and "YOUR_API_KEY" not in clario_key:
+        clario_model = os.getenv("CLARIO_MODEL", "clario/gemini-3.7-flash")
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content}
+        ]
+        return call_clario_completion(
+            messages=messages,
+            model=clario_model,
+            response_format={"type": "json_object"}
+        )
 
     config = types.GenerateContentConfig(
         system_instruction=system_prompt,
@@ -169,6 +187,7 @@ def main():
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--model", type=str, default="gemini-3.5-flash-lite")
     parser.add_argument("--resume", action="store_true", default=True)
+    parser.add_argument("--no-resume", dest="resume", action="store_false")
     args = parser.parse_args()
 
     base_dir = Path(__file__).resolve().parent
@@ -176,8 +195,12 @@ def main():
     env_path = workspace_root / ".env"
     load_dotenv(dotenv_path=env_path, override=True)
 
-    model_name = args.model
-    key_manager = ApiKeyManager(env_path=str(env_path), min_interval_per_key=4.15)
+    clario_key = os.getenv("CLARIO_API_KEY", "").strip()
+    is_clario = bool(clario_key and "YOUR_API_KEY" not in clario_key)
+    model_name = os.getenv("CLARIO_MODEL", "clario/gemini-3.7-flash") if is_clario else args.model
+    key_manager = None
+    if not is_clario:
+        key_manager = ApiKeyManager(env_path=str(env_path), min_interval_per_key=4.15)
 
     data_path = base_dir.parent / "02_data_splitting" / "data" / "test_golden_benchmark_500.csv"
     df = pd.read_csv(data_path)
@@ -200,11 +223,9 @@ def main():
         for _, row in df_existing.iterrows():
             err = str(row.get("ErrorMessage", "")).strip()
             pred = str(row.get("PredictedDepartmentName", "")).strip()
-            init_d = str(row.get("InitialDepartmentName", "")).strip()
-            # Hanya pertahankan tiket yang valid dan tidak terdampak distraksi RAG mentah pre-upgrade
-            if pred and pred != "Unknown" and (not err or err == "nan") and pred.lower() == init_d.lower():
+            if pred and pred != "Unknown" and (not err or err == "nan"):
                 existing_preds[str(row["FeedbackHeaderID"])] = row.to_dict()
-        print(f"[Skenario 3] Resume (Upgraded RAG Filter): {len(existing_preds)} tiket konsisten dipertahankan, {500 - len(existing_preds)} tiket dievaluasi ulang.")
+        print(f"[Skenario 3] Resume: {len(existing_preds)} tiket valid dipertahankan, {len(df) - len(existing_preds)} tiket dievaluasi.")
 
     df_eval = df.head(args.limit) if args.limit else df
     results = list(existing_preds.values())
@@ -260,6 +281,7 @@ def main():
             "PredictedDepartmentName": pred_dept_canonical,
             "PredictedCategory": parsed_json.get("problem_category", ""),
             "UrgencyLevel": parsed_json.get("urgency_level", ""),
+            "ConfidenceScore": parsed_json.get("confidence_score", None),
             "FacilityItem": parsed_json.get("facility_item", ""),
             "LocationContext": parsed_json.get("location_context", ""),
             "DraftReply": parsed_json.get("draft_reply", ""),
@@ -278,7 +300,7 @@ def main():
                 pd.DataFrame(results).to_csv(predictions_csv, index=False, encoding="utf-8")
 
     print(f"[Skenario 3] Mengevaluasi {len(pending_rows)} tiket dengan `{model_name}` (5 workers paralel)...")
-    with ThreadPoolExecutor(max_workers=5) as ex:
+    with ThreadPoolExecutor(max_workers=10) as ex:
         futures = [ex.submit(eval_one, r) for r in pending_rows]
         for fut in tqdm(as_completed(futures), total=len(futures), desc="Evaluating Skenario 3 (Single+RAG)"):
             fut.result()

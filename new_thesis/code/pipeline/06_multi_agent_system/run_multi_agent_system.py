@@ -19,13 +19,27 @@ import time
 import json
 import re
 import argparse
+import threading
+import warnings
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from datetime import datetime
+
+warnings.filterwarnings("ignore", message=".*automatic function calling.*")
+warnings.filterwarnings("ignore", category=UserWarning, module="google.genai")
+
 import pandas as pd
 from tqdm import tqdm
 from dotenv import load_dotenv
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 # Try importing google.genai
 try:
@@ -44,6 +58,11 @@ try:
     from pipeline.api_key_manager import ApiKeyManager
 except ImportError:
     ApiKeyManager = None
+
+try:
+    from pipeline.clario_client import call_clario_completion
+except ImportError:
+    call_clario_completion = None
 
 # Mapping of department codes to canonical names
 DEPT_CODE_TO_NAME = {
@@ -217,6 +236,10 @@ def call_with_retry(client, model_name: str, contents: str, config, max_retries:
             return resp, pure_lat
         except Exception as e:
             err_str = str(e).lower()
+            is_daily_quota = ("generaterequestsperday" in err_str or "requests per day limit" in err_str or "limit: 500" in err_str or "retry in 20h" in err_str or "retry in 2" in err_str)
+            if is_daily_quota and key_manager:
+                key_manager.mark_daily_exhausted(key_idx)
+                continue
             is_invalid = ("api_key_invalid" in err_str or "api key not valid" in err_str or "400" in err_str or "403" in err_str or "permission_denied" in err_str or "unauthenticated" in err_str or "401" in err_str)
             if is_invalid and key_manager:
                 key_manager.mark_invalid(key_idx)
@@ -235,15 +258,21 @@ def call_with_retry(client, model_name: str, contents: str, config, max_retries:
 
 def call_agent1_reception(client, model_name: str, system_prompt: str, complaint: str, chunks_text: str, subject_category: str = "", initial_dept: str = "", key_manager = None):
     """Agen 1: Receptionist & Handbook RAG validator."""
-    subject_str = f"KATEGORI SUBJEK TIKET: {subject_category}\n" if subject_category else ""
-    dept_str = f"DEPARTEMEN PILIHAN AWAL: {initial_dept}\n" if initial_dept else ""
+    # Portal metadata (subject category, initial department) is deliberately not sent: it leaks the label.
     rag_block = chunks_text if chunks_text else "(Tidak ada pasal Handbook yang relevan langsung)"
     user_content = (
-        f"{subject_str}{dept_str}"
         f"PESAN PENGHUNI:\n{complaint}\n\n"
         f"POTONGAN ATURAN HANDBOOK ASRAMA (RAG CONTEXT):\n{rag_block}\n\n"
         f"Keluarkan analisis niat, distilasi aturan Handbook, dan ringkasan keluhan dalam format JSON sesuai panduan."
     )
+
+    clario_key = os.getenv("CLARIO_API_KEY", "").strip()
+    if call_clario_completion and clario_key and "YOUR_API_KEY" not in clario_key:
+        clario_model = os.getenv("CLARIO_MODEL", "clario/gemini-3.7-flash")
+        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_content}]
+        p, raw, lat, p_tok, r_tok = call_clario_completion(messages=messages, model=clario_model, response_format={"type": "json_object"})
+        return p, lat, p_tok + r_tok
+
     config = types.GenerateContentConfig(
         system_instruction=system_prompt,
         temperature=0.1,
@@ -258,17 +287,21 @@ def call_agent1_reception(client, model_name: str, system_prompt: str, complaint
 
 def call_agent2_triage(client, model_name: str, system_prompt: str, tool_schema: dict, complaint: str, agent1_summary: str, initial_dept: str, subject_category: str = "", agent1_policy: str = "", key_manager = None):
     """Agen 2: Triage Specialist invoking native function calling."""
-    subject_line = f"- Kategori Subjek Tiket: {subject_category}\n" if subject_category else ""
     policy_line = f"- Intisari Regulasi Handbook (Distilasi Agen 1): {agent1_policy}\n" if agent1_policy else ""
     user_content = (
         f"LAPORAN KELUHAN MAHASISWA:\n"
-        f"{subject_line}"
-        f"- Departemen Pilihan Awal Mahasiswa: {initial_dept}\n"
         f"- Isi Keluhan Asli: {complaint}\n"
         f"- Ringkasan Validasi Agen 1: {agent1_summary}\n"
         f"{policy_line}\n"
         f"Silakan analisis dan panggil fungsi tool `route_and_classify_complaint`."
     )
+
+    clario_key = os.getenv("CLARIO_API_KEY", "").strip()
+    if call_clario_completion and clario_key and "YOUR_API_KEY" not in clario_key:
+        clario_model = os.getenv("CLARIO_MODEL", "clario/gemini-3.7-flash")
+        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_content}]
+        tool_args, fn_name, lat, p_tok, r_tok = call_clario_completion(messages=messages, model=clario_model, tools=[tool_schema])
+        return fn_name, tool_args, lat, p_tok + r_tok
     
     tool = types.Tool(function_declarations=[
         types.FunctionDeclaration(
@@ -312,6 +345,14 @@ def call_agent3_response(client, model_name: str, system_prompt: str, complaint:
         f"HASIL TRIASE TERSTRUKTUR (AGEN 2):\n{json.dumps(triage_data, ensure_ascii=False, indent=2)}\n\n"
         f"Susun draf balasan resmi staf sesuai panduan format JSON."
     )
+
+    clario_key = os.getenv("CLARIO_API_KEY", "").strip()
+    if call_clario_completion and clario_key and "YOUR_API_KEY" not in clario_key:
+        clario_model = os.getenv("CLARIO_MODEL", "clario/gemini-3.7-flash")
+        messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_content}]
+        p, raw, lat, p_tok, r_tok = call_clario_completion(messages=messages, model=clario_model, response_format={"type": "json_object"})
+        return p, lat, p_tok + r_tok
+
     config = types.GenerateContentConfig(
         system_instruction=system_prompt,
         temperature=0.2,
@@ -346,11 +387,13 @@ def main():
         load_dotenv()
 
     api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    model_name = args.model or os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"
+    clario_key = os.getenv("CLARIO_API_KEY", "").strip()
+    is_clario = bool(clario_key and "YOUR_API_KEY" not in clario_key)
+    model_name = os.getenv("CLARIO_MODEL", "clario/gemini-3.7-flash") if is_clario else (args.model or os.getenv("GEMINI_MODEL") or "gemini-2.5-flash")
 
     key_manager = None
     client = None
-    if not args.mock:
+    if not args.mock and not is_clario:
         if ApiKeyManager is not None:
             try:
                 key_manager = ApiKeyManager(env_path=str(env_path) if env_path.exists() else None)
@@ -433,12 +476,11 @@ def main():
 
     results = list(existing_preds.values())
     processed_ids = set(existing_preds.keys())
+    pending_rows = [row for _, row in df_eval.iterrows() if str(row["FeedbackHeaderID"]) not in processed_ids]
+    res_lock = threading.Lock()
 
-    for idx, row in tqdm(df_eval.iterrows(), total=len(df_eval), desc="Evaluating MAS Pipeline"):
+    def eval_one(row):
         ticket_id = str(row["FeedbackHeaderID"])
-        if ticket_id in processed_ids:
-            continue
-
         complaint = str(row.get("CleanedComplaint", "")).strip()
         initial_dept = str(row.get("InitialDepartmentName", "")).strip()
         handled_dept = str(row.get("HandledDepartmentName", "")).strip()
@@ -465,13 +507,12 @@ def main():
                 # 1. RAG Retrieval & Agen 1
                 top_chunks = retriever.retrieve(complaint, top_k=2)
                 chunks_context = "\n\n".join([f"[{c['section_title']} (Hal. {c['page_start']})]\n{c['text_content']}" for c in top_chunks])
-                a1_json, lat1, tok1 = call_agent1_reception(client, model_name, p1, complaint, chunks_context, subject_category, key_manager=key_manager)
-                time.sleep(3.0)
+                a1_json, lat1, tok1 = call_agent1_reception(client, model_name, p1, complaint, chunks_context, key_manager=key_manager)
                 
                 # 2. Agen 2 Triage with Function Calling
                 a1_summary = a1_json.get("complaint_summary") or complaint
-                fn_name, tool_args, lat2, tok2 = call_agent2_triage(client, model_name, p2, tool_schema, complaint, a1_summary, initial_dept, subject_category, key_manager=key_manager)
-                time.sleep(3.0)
+                a1_policy = a1_json.get("extracted_handbook_policy") or ""
+                fn_name, tool_args, lat2, tok2 = call_agent2_triage(client, model_name, p2, tool_schema, complaint, a1_summary, "", agent1_policy=a1_policy, key_manager=key_manager)
                 
                 fn_success = int(bool(tool_args and "target_department" in tool_args))
                 pred_dept_code = tool_args.get("target_department", "")
@@ -487,7 +528,6 @@ def main():
                 official_resp = a3_json.get("official_response_text", "")
                 tot_tokens = tok1 + tok2 + tok3
                 err_msg = ""
-                time.sleep(4.0)
             except Exception as e:
                 err_msg = str(e)
                 print(f"\n[Warning] Error on ticket {ticket_id}: {err_msg}")
@@ -495,7 +535,6 @@ def main():
                 pred_dept_code, pred_dept_name, pred_category, urgency, facility_item, confidence, reasoning, official_resp = "", "Unknown", "", "", "", 0.0, "", ""
                 lat1, lat2, lat3 = 0, 0, 0
                 tot_tokens = 0
-                time.sleep(2.0)
 
         is_correct = int(pred_dept_name.lower().strip() == handled_dept.lower().strip())
         was_reroute_fixed = int(is_rerouted == 1 and is_correct == 1 and pred_dept_name.lower().strip() != initial_dept.lower().strip())
@@ -526,12 +565,19 @@ def main():
             "ErrorMessage": err_msg
         }
 
-        results.append(record)
-        processed_ids.add(ticket_id)
+        with res_lock:
+            results.append(record)
+            processed_ids.add(ticket_id)
+            if len(results) % 10 == 0 or len(results) == len(df_eval):
+                pd.DataFrame(results).to_csv(predictions_csv, index=False, encoding="utf-8")
 
-        if len(results) % 10 == 0 or len(results) == len(df_eval):
-            df_out = pd.DataFrame(results)
-            df_out.to_csv(predictions_csv, index=False, encoding="utf-8")
+    with ThreadPoolExecutor(max_workers=10) as ex:
+        futures = [ex.submit(eval_one, r) for r in pending_rows]
+        for fut in tqdm(as_completed(futures), total=len(futures), desc="Evaluating MAS Pipeline"):
+            fut.result()
+
+    order_map = {str(tid): i for i, tid in enumerate(df_eval["FeedbackHeaderID"])}
+    results.sort(key=lambda r: order_map.get(str(r["FeedbackHeaderID"]), 999999))
 
     df_final = pd.DataFrame(results)
     df_final.to_csv(predictions_csv, index=False, encoding="utf-8")

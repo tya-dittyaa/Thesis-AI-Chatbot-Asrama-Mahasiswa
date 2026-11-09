@@ -47,7 +47,8 @@ from run_multi_agent_system import (
 def main():
     parser = argparse.ArgumentParser(description="Retry / Upgrade MAS Tickets")
     parser.add_argument("--check-only", action="store_true")
-    parser.add_argument("--upgrade-recheck", action="store_true", default=True)
+    parser.add_argument("--upgrade-recheck", action="store_true", default=False,
+                        help="DO NOT use for reported results: it re-runs only tickets that disagree with the portal department.")
     parser.add_argument("--model", type=str, default="gemini-3.5-flash-lite")
     args = parser.parse_args()
 
@@ -118,15 +119,14 @@ def main():
         top_chunks = retriever.retrieve(complaint, top_k=2, min_score=0.08)
         chunks_context = "\n\n".join([f"[{c['section_title']} (Hal. {c['page_start']})]\n{c['text_content']}" for c in top_chunks])
         a1_json, lat1, tok1 = call_agent1_reception(
-            None, model_name, p1, complaint, chunks_context,
-            subject_category=subject_category, initial_dept=initial_dept, key_manager=km
+            None, model_name, p1, complaint, chunks_context, key_manager=km
         )
 
         a1_summary = a1_json.get("complaint_summary") or a1_json.get("direct_answer") or complaint
         a1_policy = a1_json.get("extracted_handbook_policy") or a1_json.get("direct_answer") or ""
         fn_name, tool_args, lat2, tok2 = call_agent2_triage(
-            None, model_name, p2, tool_schema, complaint, a1_summary, initial_dept,
-            subject_category=subject_category, agent1_policy=a1_policy, key_manager=km
+            None, model_name, p2, tool_schema, complaint, a1_summary, "",
+            agent1_policy=a1_policy, key_manager=km
         )
 
         fn_success = int(bool(tool_args and "target_department" in tool_args))

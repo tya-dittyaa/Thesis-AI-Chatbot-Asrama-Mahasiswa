@@ -16,11 +16,25 @@ import time
 import json
 import re
 import argparse
+import threading
+import warnings
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from datetime import datetime
+
+warnings.filterwarnings("ignore", message=".*automatic function calling.*")
+warnings.filterwarnings("ignore", category=UserWarning, module="google.genai")
+
 import pandas as pd
 from tqdm import tqdm
 from dotenv import load_dotenv
+
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 # Try importing google.genai
 try:
@@ -40,6 +54,11 @@ try:
     from pipeline.api_key_manager import ApiKeyManager
 except ImportError:
     ApiKeyManager = None
+
+try:
+    from pipeline.clario_client import call_clario_completion
+except ImportError:
+    call_clario_completion = None
 
 # Mapping of department codes to canonical names
 DEPT_CODE_TO_NAME = {
@@ -147,16 +166,27 @@ def call_gemini_baseline(
     """
     user_content = (
         f"DATA TIKET PENGADUAN PENGHUNI:\n"
-        f"- Judul/Subjek Kategori Mahasiswa: {ticket_payload.get('SubjectCategory', '-')}\n"
-        f"- Departemen Pilihan Mahasiswa: {ticket_payload.get('InitialDepartmentName', '-')}\n"
         f"- Isi Pesan Keluhan: {ticket_payload.get('CleanedComplaint', '-')}\n\n"
         f"Silakan analisis dan berikan respons JSON sesuai format panduan."
     )
     
-    start_time = time.time()
+    clario_key = os.getenv("CLARIO_API_KEY", "").strip()
+    if call_clario_completion and clario_key and "YOUR_API_KEY" not in clario_key:
+        clario_model = os.getenv("CLARIO_MODEL", "clario/gemini-3.7-flash")
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content}
+        ]
+        return call_clario_completion(
+            messages=messages,
+            model=clario_model,
+            response_format={"type": "json_object"}
+        )
+
     raw_text = ""
     prompt_tokens = 0
     response_tokens = 0
+    latency = 0.0
     
     config = types.GenerateContentConfig(
         system_instruction=system_prompt,
@@ -165,33 +195,39 @@ def call_gemini_baseline(
     )
     
     response = None
-    max_retries = 5
+    max_retries = 8
     for attempt in range(max_retries):
+        key_idx = None
         try:
-            curr_client = key_manager.get_client() if key_manager else client
+            if key_manager:
+                key_idx, curr_client = key_manager.acquire_client_with_index()
+            else:
+                curr_client = client
+            t0 = time.time()
             response = curr_client.models.generate_content(
                 model=model_name,
                 contents=user_content,
                 config=config
             )
+            latency = time.time() - t0
             break
         except Exception as e:
             err_str = str(e)
+            is_invalid = any(k in err_str.lower() for k in ["api_key_invalid", "api key not valid", "400", "403", "permission_denied", "unauthenticated", "401"])
+            if is_invalid and key_manager:
+                key_manager.mark_invalid(key_idx)
+                continue
             is_rate_limit = "429" in err_str or "quota" in err_str.lower() or "rate" in err_str.lower() or "resource_exhausted" in err_str.lower()
-            is_server_err = "503" in err_str or "502" in err_str or "demand" in err_str.lower()
+            is_server_err = "503" in err_str or "502" in err_str or "demand" in err_str.lower() or "disconnected" in err_str.lower()
             if attempt < max_retries - 1 and (is_rate_limit or is_server_err):
                 if is_rate_limit and key_manager and len(key_manager.keys) > 1:
-                    print(f"\n  [RATE LIMIT/QUOTA] Key kena limit. Auto-rotating ke API key berikutnya...")
-                    key_manager.rotate(wait_sec=2)
+                    key_manager.rotate(wait_sec=1, idx=key_idx)
                 else:
-                    # Rate limit: tunggu lebih lama (30s, 60s, 120s, 180s)
-                    wait = 30 * (attempt + 1) if is_rate_limit else 5 * (2 ** attempt)
-                    print(f"\n  [RATE LIMIT/ERR] attempt {attempt+1}, tunggu {wait}s...")
+                    wait = 6 * (attempt + 1)
                     time.sleep(wait)
             else:
                 raise e
     
-    latency = time.time() - start_time
     raw_text = response.text or ""
     
     if hasattr(response, "usage_metadata") and response.usage_metadata:
@@ -225,12 +261,14 @@ def main():
         load_dotenv()
         
     api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-    model_name = args.model or os.getenv("GEMINI_MODEL") or "gemini-2.5-flash"
+    clario_key = os.getenv("CLARIO_API_KEY", "").strip()
+    is_clario = bool(clario_key and "YOUR_API_KEY" not in clario_key)
+    model_name = os.getenv("CLARIO_MODEL", "clario/gemini-3.7-flash") if is_clario else (args.model or os.getenv("GEMINI_MODEL") or "gemini-2.5-flash")
     
     # Check API key if not mock
     key_manager = None
     client = None
-    if not args.mock:
+    if not args.mock and not is_clario:
         if ApiKeyManager is not None:
             try:
                 key_manager = ApiKeyManager(env_path=str(env_path) if env_path.exists() else None)
@@ -307,14 +345,13 @@ def main():
     
     results = list(existing_preds.values())
     processed_ids = set(existing_preds.keys())
+    pending_rows = [row for _, row in df_eval.iterrows() if str(row["FeedbackHeaderID"]) not in processed_ids]
+    res_lock = threading.Lock()
     
     start_total_time = time.time()
     
-    for idx, row in tqdm(df_eval.iterrows(), total=len(df_eval), desc="Evaluating Baseline"):
+    def eval_one(row):
         ticket_id = str(row["FeedbackHeaderID"])
-        if ticket_id in processed_ids:
-            continue
-            
         initial_dept = str(row.get("InitialDepartmentName", "")).strip()
         handled_dept = str(row.get("HandledDepartmentName", "")).strip()
         is_rerouted = int(row.get("IsRerouted", 0))
@@ -333,7 +370,7 @@ def main():
         error_msg = ""
         
         if args.mock:
-            time.sleep(0.02)  # simulate fast latency
+            time.sleep(0.02)
             parsed_json = simulate_mock_prediction(row)
             raw_text = json.dumps(parsed_json, indent=2)
             latency = 0.05
@@ -341,19 +378,16 @@ def main():
             resp_tokens = 110
         else:
             try:
-                active_client = key_manager.get_random_client() if key_manager else client
                 parsed_json, raw_text, latency, prompt_tokens, resp_tokens = call_gemini_baseline(
-                    client=active_client,
+                    client=client,
                     model_name=model_name,
                     system_prompt=system_prompt,
                     ticket_payload=ticket_payload,
                     key_manager=key_manager
                 )
-                time.sleep(2.5)  # Dengan 3 keys acak, 2.5s pacing = ~8 RPM per key (aman di bawah 15 RPM)
             except Exception as e:
                 error_msg = str(e)
                 print(f"\n[Warning] Error processing ticket {ticket_id}: {error_msg}")
-                time.sleep(10.0)
                 
         is_valid_json = bool(parsed_json and isinstance(parsed_json, dict))
         
@@ -363,7 +397,6 @@ def main():
         
         is_correct = (pred_dept_canonical.lower().strip() == handled_dept.lower().strip())
         
-        # Did it correctly fix a rerouted ticket?
         was_reroute_fixed = False
         if is_rerouted == 1:
             if is_correct and pred_dept_canonical.lower().strip() != initial_dept.lower().strip():
@@ -382,6 +415,7 @@ def main():
             "UrgencyLevel": parsed_json.get("urgency_level", ""),
             "FacilityItem": parsed_json.get("facility_item", ""),
             "LocationContext": parsed_json.get("location_context", ""),
+            "ConfidenceScore": parsed_json.get("confidence_score", None),
             "DraftReply": parsed_json.get("draft_reply", ""),
             "IsCorrect": int(is_correct),
             "WasRerouteFixed": int(was_reroute_fixed),
@@ -394,13 +428,19 @@ def main():
             "RawOutput": raw_text
         }
         
-        results.append(record)
-        processed_ids.add(ticket_id)
-        
-        # Incremental save every 10 tickets
-        if len(results) % 10 == 0 or len(results) == len(df_eval):
-            df_out = pd.DataFrame(results)
-            df_out.to_csv(predictions_csv, index=False, encoding="utf-8")
+        with res_lock:
+            results.append(record)
+            processed_ids.add(ticket_id)
+            if len(results) % 20 == 0 or len(results) == len(df_eval):
+                pd.DataFrame(results).to_csv(predictions_csv, index=False, encoding="utf-8")
+
+    with ThreadPoolExecutor(max_workers=10) as ex:
+        futures = [ex.submit(eval_one, r) for r in pending_rows]
+        for fut in tqdm(as_completed(futures), total=len(futures), desc="Evaluating Baseline"):
+            fut.result()
+
+    order_map = {str(tid): i for i, tid in enumerate(df_eval["FeedbackHeaderID"])}
+    results.sort(key=lambda r: order_map.get(str(r["FeedbackHeaderID"]), 999999))
             
     # Final save
     df_final = pd.DataFrame(results)

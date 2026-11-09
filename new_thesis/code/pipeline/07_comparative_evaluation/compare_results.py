@@ -168,7 +168,7 @@ def analyze_error_cascade(df_s2: pd.DataFrame, df_s3: pd.DataFrame, df_s4: pd.Da
     }
 
 
-def simulate_hybrid_architecture(df_s2: pd.DataFrame, df_s4: pd.DataFrame) -> dict:
+def simulate_hybrid_architecture(df_s2: pd.DataFrame, df_s4: pd.DataFrame, theta: float = 0.85) -> dict:
     """
     Simulasi empiris Confidence & Domain-Gated Hybrid ITSM Triage Framework:
     - Jalur Cepat (Tier-1: Skenario 2 Single-Agent) menangani tiket keluhan fisik/operasional yang selaras dengan kanal awal.
@@ -186,12 +186,15 @@ def simulate_hybrid_architecture(df_s2: pd.DataFrame, df_s4: pd.DataFrame) -> di
         pred2 = str(row2.get("PredictedDepartmentName", "")).strip()
         row4 = s4_map.get(tid, row2.to_dict())
 
-        needs_escalation = (init_dept == "Finance") or (pred2.lower() != init_dept.lower())
+        # Gate uses only Tier-1 outputs (never the portal department). Choose theta on a dev set, not the benchmark.
+        conf2 = pd.to_numeric(row2.get("ConfidenceScore"), errors="coerce")
+        needs_escalation = (pred2 == "Finance") or pd.isna(conf2) or (conf2 < theta)
         if needs_escalation:
             escalated_count += 1
             chosen = row4.copy()
-            chosen["TotalLatencySeconds"] = float(row4.get("TotalLatencySeconds", 5.9))
-            chosen["TotalTokens"] = int(row4.get("TotalTokens", 3700))
+            # The Tier-1 pass has already been paid for, so escalated tickets cost both paths.
+            chosen["TotalLatencySeconds"] = float(row4["TotalLatencySeconds"]) + float(row2["LatencySeconds"])
+            chosen["TotalTokens"] = int(row4["TotalTokens"]) + int(row2["TotalTokens"])
         else:
             chosen = row2.to_dict()
             chosen["TotalLatencySeconds"] = float(row2.get("LatencySeconds", 1.76))

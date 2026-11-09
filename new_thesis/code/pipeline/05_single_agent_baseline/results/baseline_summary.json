@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-09-30T10:15:29.373460",
-  "model_used": "gemini-3.5-flash-lite",
+  "timestamp": "2026-11-09T20:36:00.436491",
+  "model_used": "gemini-3.1-flash-lite",
   "total_evaluated": 500,
-  "overall_accuracy_percent": 82.8,
+  "overall_accuracy_percent": 75.0,
   "json_validity_rate_percent": 100.0,
-  "average_latency_seconds": 1.758,
-  "total_tokens_consumed": 416388,
-  "average_tokens_per_ticket": 832.8,
+  "average_latency_seconds": 8.782,
+  "total_tokens_consumed": 739528,
+  "average_tokens_per_ticket": 1479.1,
   "reroute_analysis": {
     "total_rerouted_tickets": 1,
     "reroute_accuracy_percent": 0.0,
@@ -15,28 +15,28 @@
   "per_department_metrics": {
     "Estate Department": {
       "total_tickets": 100,
-      "correct_predictions": 92,
-      "accuracy_percent": 92.0
+      "correct_predictions": 93,
+      "accuracy_percent": 93.0
     },
     "Operations": {
       "total_tickets": 100,
-      "correct_predictions": 87,
-      "accuracy_percent": 87.0
+      "correct_predictions": 77,
+      "accuracy_percent": 77.0
     },
     "Finance": {
       "total_tickets": 100,
-      "correct_predictions": 68,
-      "accuracy_percent": 68.0
+      "correct_predictions": 61,
+      "accuracy_percent": 61.0
     },
     "Marketing": {
       "total_tickets": 100,
-      "correct_predictions": 81,
-      "accuracy_percent": 81.0
+      "correct_predictions": 69,
+      "accuracy_percent": 69.0
     },
     "Student Support Office": {
       "total_tickets": 100,
-      "correct_predictions": 86,
-      "accuracy_percent": 86.0
+      "correct_predictions": 75,
+      "accuracy_percent": 75.0
     }
   }
 }

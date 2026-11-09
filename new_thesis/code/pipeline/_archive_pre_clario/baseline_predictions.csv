@@ -1,0 +1,23 @@
+FeedbackHeaderID,CreatedDate,SubjectCategory,InitialDepartmentName,HandledDepartmentName,IsRerouted,PredictedDepartmentCode,PredictedDepartmentName,PredictedCategory,UrgencyLevel,FacilityItem,LocationContext,ConfidenceScore,DraftReply,IsCorrect,WasRerouteFixed,IsValidJson,LatencySeconds,PromptTokens,ResponseTokens,TotalTokens,ErrorMessage,RawOutput
+10A05D92-02F8-41B2-BC3A-9E94B78259D3,2019-03-11 17:46:57.483,AC Service,Estate Department,Estate Department,0,ED,Estate Department,AC Service,High,AC (Air Conditioner),Kamar penghuni (lokasi spesifik tidak disebutkan),0.95,"Halo, terima kasih atas laporan Anda. Kami memahami situasi ini sangat mengganggu, terutama karena suara AC semakin parah dan mengeluarkan batu es. Kami telah meneruskan laporan Anda ke Estate Department sebagai prioritas tinggi. Tim teknisi akan segera menuju kamar Anda untuk melakukan pemeriksaan dan perbaikan. Mohon pastikan Anda berada di kamar atau dapat dihubungi agar teknisi dapat mengakses unit AC. Kami akan menginformasikan perkembangan selanjutnya. Terima kasih atas kesabaran Anda.",1,0,1,4.715,3356,218,3574,,"{
+  ""intent"": ""COMPLAINT"",
+  ""target_department"": ""ED"",
+  ""target_department_name"": ""Estate Department"",
+  ""problem_category"": ""AC Service"",
+  ""urgency_level"": ""High"",
+  ""facility_item"": ""AC (Air Conditioner)"",
+  ""location_context"": ""Kamar penghuni (lokasi spesifik tidak disebutkan)"",
+  ""confidence_score"": 0.95,
+  ""draft_reply"": ""Halo, terima kasih atas laporan Anda. Kami memahami situasi ini sangat mengganggu, terutama karena suara AC semakin parah dan mengeluarkan batu es. Kami telah meneruskan laporan Anda ke Estate Department sebagai prioritas tinggi. Tim teknisi akan segera menuju kamar Anda untuk melakukan pemeriksaan dan perbaikan. Mohon pastikan Anda berada di kamar atau dapat dihubungi agar teknisi dapat mengakses unit AC. Kami akan menginformasikan perkembangan selanjutnya. Terima kasih atas kesabaran Anda.""
+}"
+AF0A66BE-93CB-44A9-8489-8F5F824021B6,2018-08-08 21:14:26.343,Building Facilities,Estate Department,Estate Department,0,ED,Estate Department,Room Maintenance,Medium,Ceiling (plafon kamar berjamur),Kamar penghuni (tidak disebutkan nomor kamar),0.97,"Halo, terima kasih telah melaporkan kondisi plafon kamar Anda. Kami dari Estate Department memahami bahwa jamur pada plafon semakin menyebar dan membuat kamar menjadi kotor, terlebih ini sudah berulang. Kami akan segera menjadwalkan pemeriksaan dan tindakan pembersihan serta pengecatan ulang oleh tim maintenance. Mohon informasikan nomor kamar dan waktu yang Anda tersedia agar tim kami dapat melakukan pengecekan. Kami juga akan mengevaluasi kemungkinan penyebab kelembapan agar masalah serupa tidak terulang. Terima kasih atas kesabaran Anda.",1,0,1,4.048,3434,247,3681,,"{
+  ""intent"": ""COMPLAINT"",
+  ""target_department"": ""ED"",
+  ""target_department_name"": ""Estate Department"",
+  ""problem_category"": ""Room Maintenance"",
+  ""urgency_level"": ""Medium"",
+  ""facility_item"": ""Ceiling (plafon kamar berjamur)"",
+  ""location_context"": ""Kamar penghuni (tidak disebutkan nomor kamar)"",
+  ""confidence_score"": 0.97,
+  ""draft_reply"": ""Halo, terima kasih telah melaporkan kondisi plafon kamar Anda. Kami dari Estate Department memahami bahwa jamur pada plafon semakin menyebar dan membuat kamar menjadi kotor, terlebih ini sudah berulang. Kami akan segera menjadwalkan pemeriksaan dan tindakan pembersihan serta pengecatan ulang oleh tim maintenance. Mohon informasikan nomor kamar dan waktu yang Anda tersedia agar tim kami dapat melakukan pengecekan. Kami juga akan mengevaluasi kemungkinan penyebab kelembapan agar masalah serupa tidak terulang. Terima kasih atas kesabaran Anda.""
+}"
