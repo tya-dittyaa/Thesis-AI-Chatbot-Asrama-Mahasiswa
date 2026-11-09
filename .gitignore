@@ -29,6 +29,7 @@ evaluation_vps.log
 *.bak
 *_backup_*
 *.tmp
+**/check_keys.py
 
 # Large Datasets & Historical Population Dumps (>10MB)
 **/data/raw/

@@ -1,0 +1,250 @@
+{
+  "timestamp": "2026-11-09T09:12:24.025948",
+  "scenarios": {
+    "scenario_1_classical_ml": {
+      "architecture": "Skenario 1: Classical ML (TF-IDF + LR)",
+      "total_tickets": 500,
+      "correct_tickets": 380,
+      "overall_accuracy": 76.0,
+      "macro_precision": 77.57,
+      "macro_recall": 76.0,
+      "macro_f1": 75.9,
+      "weighted_f1": 75.9,
+      "schema_validity_rate": 0.0,
+      "average_latency_sec": 0.0009,
+      "average_tokens_ticket": 0.0,
+      "per_department_accuracy": {
+        "Estate Department": 91.0,
+        "Operations": 86.0,
+        "Finance": 72.0,
+        "Marketing": 63.0,
+        "Student Support Office": 68.0
+      },
+      "per_department_precision": {
+        "Estate Department": 79.82,
+        "Operations": 63.7,
+        "Finance": 77.42,
+        "Marketing": 75.0,
+        "Student Support Office": 91.89
+      },
+      "per_department_recall": {
+        "Estate Department": 91.0,
+        "Operations": 86.0,
+        "Finance": 72.0,
+        "Marketing": 63.0,
+        "Student Support Office": 68.0
+      },
+      "per_department_f1": {
+        "Estate Department": 85.05,
+        "Operations": 73.19,
+        "Finance": 74.61,
+        "Marketing": 68.48,
+        "Student Support Office": 78.16
+      },
+      "avg_confidence_score": 0.749,
+      "confidence_on_correct": 0.796,
+      "confidence_on_wrong": 0.602
+    },
+    "scenario_2_single_agent": {
+      "architecture": "Skenario 2: Monolithic Single-Agent",
+      "total_tickets": 500,
+      "correct_tickets": 414,
+      "overall_accuracy": 82.8,
+      "macro_precision": 85.99,
+      "macro_recall": 82.8,
+      "macro_f1": 84.0,
+      "weighted_f1": 84.0,
+      "schema_validity_rate": 100.0,
+      "average_latency_sec": 1.758,
+      "average_tokens_ticket": 832.8,
+      "per_department_accuracy": {
+        "Estate Department": 92.0,
+        "Operations": 87.0,
+        "Finance": 68.0,
+        "Marketing": 81.0,
+        "Student Support Office": 86.0
+      },
+      "per_department_precision": {
+        "Estate Department": 85.98,
+        "Operations": 79.82,
+        "Finance": 90.67,
+        "Marketing": 81.0,
+        "Student Support Office": 92.47
+      },
+      "per_department_recall": {
+        "Estate Department": 92.0,
+        "Operations": 87.0,
+        "Finance": 68.0,
+        "Marketing": 81.0,
+        "Student Support Office": 86.0
+      },
+      "per_department_f1": {
+        "Estate Department": 88.89,
+        "Operations": 83.25,
+        "Finance": 77.71,
+        "Marketing": 81.0,
+        "Student Support Office": 89.12
+      },
+      "avg_confidence_score": null,
+      "confidence_on_correct": null,
+      "confidence_on_wrong": null
+    },
+    "scenario_3_single_agent_rag": {
+      "architecture": "Skenario 3: Single-Agent + RAG",
+      "total_tickets": 500,
+      "correct_tickets": 419,
+      "overall_accuracy": 83.8,
+      "macro_precision": 88.56,
+      "macro_recall": 83.8,
+      "macro_f1": 85.53,
+      "weighted_f1": 85.53,
+      "schema_validity_rate": 100.0,
+      "average_latency_sec": 2.026,
+      "average_tokens_ticket": 1300.4,
+      "per_department_accuracy": {
+        "Estate Department": 91.0,
+        "Operations": 90.0,
+        "Finance": 66.0,
+        "Marketing": 85.0,
+        "Student Support Office": 87.0
+      },
+      "per_department_precision": {
+        "Estate Department": 87.5,
+        "Operations": 78.26,
+        "Finance": 94.29,
+        "Marketing": 85.0,
+        "Student Support Office": 97.75
+      },
+      "per_department_recall": {
+        "Estate Department": 91.0,
+        "Operations": 90.0,
+        "Finance": 66.0,
+        "Marketing": 85.0,
+        "Student Support Office": 87.0
+      },
+      "per_department_f1": {
+        "Estate Department": 89.22,
+        "Operations": 83.72,
+        "Finance": 77.65,
+        "Marketing": 85.0,
+        "Student Support Office": 92.06
+      },
+      "avg_confidence_score": null,
+      "confidence_on_correct": null,
+      "confidence_on_wrong": null
+    },
+    "scenario_4_multi_agent_mas": {
+      "architecture": "Skenario 4: Modular Chained MAS",
+      "total_tickets": 500,
+      "correct_tickets": 449,
+      "overall_accuracy": 89.8,
+      "macro_precision": 90.18,
+      "macro_recall": 89.8,
+      "macro_f1": 89.81,
+      "weighted_f1": 89.81,
+      "schema_validity_rate": 100.0,
+      "average_latency_sec": 5.8,
+      "average_tokens_ticket": 3761.8,
+      "per_department_accuracy": {
+        "Estate Department": 97.0,
+        "Operations": 90.0,
+        "Finance": 85.0,
+        "Marketing": 90.0,
+        "Student Support Office": 87.0
+      },
+      "per_department_precision": {
+        "Estate Department": 84.35,
+        "Operations": 88.24,
+        "Finance": 93.41,
+        "Marketing": 88.24,
+        "Student Support Office": 96.67
+      },
+      "per_department_recall": {
+        "Estate Department": 97.0,
+        "Operations": 90.0,
+        "Finance": 85.0,
+        "Marketing": 90.0,
+        "Student Support Office": 87.0
+      },
+      "per_department_f1": {
+        "Estate Department": 90.23,
+        "Operations": 89.11,
+        "Finance": 89.01,
+        "Marketing": 89.11,
+        "Student Support Office": 91.58
+      },
+      "avg_confidence_score": 0.919,
+      "confidence_on_correct": 0.926,
+      "confidence_on_wrong": 0.854
+    },
+    "hybrid_tiered_framework": {
+      "architecture": "Hybrid Tiered Framework (S2 Fast-Path + S4 MAS Escalation)",
+      "total_tickets": 500,
+      "correct_tickets": 451,
+      "overall_accuracy": 90.2,
+      "macro_precision": 90.56,
+      "macro_recall": 90.2,
+      "macro_f1": 90.21,
+      "weighted_f1": 90.21,
+      "schema_validity_rate": 30.8,
+      "average_latency_sec": 2.817,
+      "average_tokens_ticket": 1775.8,
+      "per_department_accuracy": {
+        "Estate Department": 97.0,
+        "Operations": 90.0,
+        "Finance": 85.0,
+        "Marketing": 91.0,
+        "Student Support Office": 88.0
+      },
+      "per_department_precision": {
+        "Estate Department": 84.35,
+        "Operations": 89.11,
+        "Finance": 93.41,
+        "Marketing": 89.22,
+        "Student Support Office": 96.7
+      },
+      "per_department_recall": {
+        "Estate Department": 97.0,
+        "Operations": 90.0,
+        "Finance": 85.0,
+        "Marketing": 91.0,
+        "Student Support Office": 88.0
+      },
+      "per_department_f1": {
+        "Estate Department": 90.23,
+        "Operations": 89.55,
+        "Finance": 89.01,
+        "Marketing": 90.1,
+        "Student Support Office": 92.15
+      },
+      "avg_confidence_score": 0.886,
+      "confidence_on_correct": 0.9,
+      "confidence_on_wrong": 0.855,
+      "escalation_rate_percent": 30.8,
+      "fast_path_rate_percent": 69.2
+    }
+  },
+  "error_cascade_analysis_s4": {
+    "total_misclassified_s4": 51,
+    "retrieval_context_noise": {
+      "count": 1,
+      "percent_of_errors": 2.0
+    },
+    "agent_chaining_loss": {
+      "count": 3,
+      "percent_of_errors": 5.9
+    },
+    "intrinsic_borderline_ambiguity": {
+      "count": 47,
+      "percent_of_errors": 92.2
+    },
+    "top_confusion_pairs": {
+      "FN -> MR": 10,
+      "OP -> ED": 7,
+      "SO -> OP": 7,
+      "FN -> ED": 5,
+      "SO -> ED": 5,
+      "MR -> FN": 4
+    }
+  }
+}

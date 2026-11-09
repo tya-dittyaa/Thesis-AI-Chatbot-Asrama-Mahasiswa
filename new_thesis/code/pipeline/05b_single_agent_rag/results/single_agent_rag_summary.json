@@ -1,0 +1,38 @@
+{
+  "timestamp": "2026-11-09T09:12:18.859040",
+  "scenario": "Skenario 3: Single-Agent LLM + RAG Handbook (Ablation Control)",
+  "model_used": "gemini-3.5-flash-lite",
+  "total_evaluated": 500,
+  "overall_accuracy_percent": 83.8,
+  "json_validity_rate_percent": 100.0,
+  "average_latency_seconds": 2.026,
+  "total_tokens_consumed": 650181,
+  "average_tokens_per_ticket": 1300.4,
+  "per_department_metrics": {
+    "Estate Department": {
+      "total_tickets": 100,
+      "correct_predictions": 91,
+      "accuracy_percent": 91.0
+    },
+    "Operations": {
+      "total_tickets": 100,
+      "correct_predictions": 90,
+      "accuracy_percent": 90.0
+    },
+    "Finance": {
+      "total_tickets": 100,
+      "correct_predictions": 66,
+      "accuracy_percent": 66.0
+    },
+    "Marketing": {
+      "total_tickets": 100,
+      "correct_predictions": 85,
+      "accuracy_percent": 85.0
+    },
+    "Student Support Office": {
+      "total_tickets": 100,
+      "correct_predictions": 87,
+      "accuracy_percent": 87.0
+    }
+  }
+}

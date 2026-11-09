@@ -1,0 +1,14 @@
+Metrik Evaluasi,Skenario 1 (Classical ML),Skenario 2 (Single-Agent),Skenario 3 (Single+RAG),Skenario 4 (Chained MAS)
+Total Tiket Evaluasi (N),500,500,500,500
+Akurasi Keseluruhan (%),76.0% (380/500),82.8% (414/500),83.8% (419/500),89.8% (449/500)
+Macro-Precision (%),77.57%,85.99%,88.56%,90.18%
+Macro-Recall (%),76.0%,82.8%,83.8%,89.8%
+Macro-F1 Score (%),75.9%,84.0%,85.53%,89.81%
+Akurasi Estate Department (ED),91.0%,92.0%,91.0%,97.0%
+Akurasi Operations (OP),86.0%,87.0%,90.0%,90.0%
+Akurasi Finance (FN),72.0%,68.0%,66.0%,85.0%
+Akurasi Marketing (MR),63.0%,81.0%,85.0%,90.0%
+Akurasi Student Support Office (SO),68.0%,86.0%,87.0%,87.0%
+Validitas Skema JSON/Function Call (%),N/A,100.0%,100.0%,100.0%
+Rata-rata Latensi per Tiket (detik),0.0009 s,1.758 s,2.026 s,5.8 s
+Rata-rata Konsumsi Token per Tiket,0 token,832.8 token,1300.4 token,3761.8 token

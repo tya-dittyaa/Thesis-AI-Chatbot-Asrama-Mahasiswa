@@ -73,7 +73,7 @@ Oleh karena itu, Tahap 2b menerapkan **Stratified Random Sampling** dengan mengu
 * 100 Tiket Student Support Office (`SO`)
 
 Total: **500 Tiket Golden Benchmark Seimbang** (`test_golden_benchmark_500.csv`).  
-Dataset ini diisolasi ketat sebagai *Held-Out Unseen Test Set* (tidak pernah dilihat selama perancangan prompt). Sisa **29.814 tiket** dialokasikan ke `train_pool.csv` sebagai korpus pelatihan model klasik.
+Dataset ini diisolasi ketat sebagai *Held-Out Unseen Test Set* (tidak pernah dilihat selama perancangan prompt). Sisa **29.164 tiket steril** (setelah eksklusi 650 tiket anomali label dari 30.314 tiket awal) dialokasikan ke `train_pool.csv` sebagai korpus pelatihan model klasik.
 
 ---
 
@@ -91,7 +91,7 @@ Penelitian membangun dan menguji 4 skenario sistem triase:
 
 ### 3.5.1. Skenario 1: Classical Supervised Machine Learning
 * **Tujuan:** Baseline kontrol era pra-LLM untuk menjawab mengapa LLM diperlukan.
-* **Arsitektur:** Menggunakan representasi leksikal `TfidfVectorizer(ngram_range=(1,2), max_features=10000)` yang dilatih pada 29.814 data `train_pool.csv`.
+* **Arsitektur:** Menggunakan representasi leksikal `TfidfVectorizer(ngram_range=(1,2), max_features=10000)` yang dilatih pada 29.164 data `train_pool.csv`.
 * **Klasifikator:** Model *Logistic Regression* / *Linear Support Vector Classifier (LinearSVC)* yang mengklasifikasikan tiket langsung ke dalam 5 kelas departemen.
 
 ### 3.5.2. Skenario 2: Monolithic Single-Agent LLM (Zero-Shot)

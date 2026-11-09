@@ -1,0 +1,22 @@
+{
+  "stage": "02a_label_cleaning",
+  "input_file": "feedback_2015_2025.csv",
+  "total_raw": 30314,
+  "total_anomaly": 650,
+  "total_clean": 29664,
+  "anomaly_rate_pct": 2.1442,
+  "anomaly_breakdown": {
+    "suspected_finance_mislabeled_as_ED (keyword: bayar)": 162,
+    "suspected_finance_mislabeled_as_ED (keyword: kwh)": 152,
+    "suspected_finance_mislabeled_as_ED (keyword: penggunaan listrik)": 150,
+    "suspected_finance_mislabeled_as_ED (keyword: tagihan)": 113,
+    "suspected_finance_mislabeled_as_ED (keyword: biaya)": 46,
+    "suspected_finance_mislabeled_as_ED (keyword: nota)": 13,
+    "suspected_finance_mislabeled_as_ED (keyword: denda)": 10,
+    "suspected_finance_mislabeled_as_ED (keyword: struk)": 2,
+    "suspected_finance_mislabeled_as_ED (keyword: tunggakan)": 1,
+    "suspected_finance_mislabeled_as_ED (keyword: slip)": 1
+  },
+  "output_clean_file": "feedback_2015_2025_clean.csv",
+  "output_anomaly_file": "anomaly_samples.csv"
+}
